@@ -1,0 +1,259 @@
+/*
+ * Copyright ConsenSys 2023
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package net.consensys.fleet.common.plugin;
+
+import net.consensys.fleet.common.config.FleetOptions;
+import net.consensys.fleet.common.config.Role;
+import net.consensys.fleet.common.peer.PeerNetworkMaintainer;
+import net.consensys.fleet.common.peer.PeerNodesManager;
+import net.consensys.fleet.common.rpc.client.WebClientWrapper;
+import net.consensys.fleet.common.rpc.json.ConvertMapperProvider;
+import net.consensys.fleet.common.rpc.server.PluginRpcMethod;
+import net.consensys.fleet.common.trielog.FleetTrieLogService;
+import net.consensys.fleet.follower.peer.FollowerPeerNetworkMaintainer;
+import net.consensys.fleet.follower.rpc.client.FleetGetBlockClient;
+import net.consensys.fleet.follower.rpc.server.FleetShipNewHeadServer;
+import net.consensys.fleet.follower.sync.BlockContextProvider;
+import net.consensys.fleet.follower.sync.FleetModeSynchronizer;
+import net.consensys.fleet.leader.event.BlockAddedObserver;
+import net.consensys.fleet.leader.peer.LeaderPeerNetworkMaintainer;
+import net.consensys.fleet.leader.rpc.client.FleetShipNewHeadClient;
+import net.consensys.fleet.leader.rpc.server.FleetAddFollowerServer;
+import net.consensys.fleet.leader.rpc.server.FleetGetBlockServer;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import com.google.auto.service.AutoService;
+import org.hyperledger.besu.plugin.BesuContext;
+import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.services.BesuConfiguration;
+import org.hyperledger.besu.plugin.services.BesuEvents;
+import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.hyperledger.besu.plugin.services.PicoCLIOptions;
+import org.hyperledger.besu.plugin.services.RpcEndpointService;
+import org.hyperledger.besu.plugin.services.TrieLogService;
+import org.hyperledger.besu.plugin.services.p2p.P2PService;
+import org.hyperledger.besu.plugin.services.rlp.RlpConverterService;
+import org.hyperledger.besu.plugin.services.sync.SynchronizationService;
+import org.hyperledger.besu.plugin.services.transactionpool.TransactionPoolService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@SuppressWarnings({"FieldCanBeLocal", "unused"})
+@AutoService(BesuPlugin.class)
+public class FleetPlugin implements BesuPlugin {
+  private static final Logger LOG = LoggerFactory.getLogger(FleetPlugin.class);
+  private static final String NAME = "fleet";
+  private static final FleetOptions CLI_OPTIONS = FleetOptions.create();
+  private BesuContext besuContext;
+  private PluginServiceProvider pluginServiceProvider;
+  private BesuConfiguration besuConfiguration;
+
+  private PeerNodesManager peerManagers;
+  private ConvertMapperProvider convertMapperProvider;
+  private WebClientWrapper webClient;
+
+  private FleetModeSynchronizer fleetModeSynchronizer;
+
+  // TODO Spit logic of besu plugin to leader besu plugin and follower besu plugin
+  @Override
+  public void register(final BesuContext besuContext) {
+    LOG.info("Registering Fleet plugin");
+    this.besuContext = besuContext;
+    this.pluginServiceProvider = new PluginServiceProvider();
+    this.convertMapperProvider = new ConvertMapperProvider(pluginServiceProvider);
+
+    LOG.info("Adding command line params");
+    final Optional<PicoCLIOptions> cmdlineOptions = besuContext.getService(PicoCLIOptions.class);
+
+    if (cmdlineOptions.isEmpty()) {
+      throw new IllegalStateException(
+          "Expecting a PicoCLI options to register CLI options with, but none found.");
+    }
+    cmdlineOptions.get().addPicoCLIOptions(NAME, CLI_OPTIONS);
+
+    LOG.debug("Creating peer manager");
+    peerManagers = new PeerNodesManager();
+    this.webClient = new WebClientWrapper(convertMapperProvider, peerManagers);
+
+    LOG.debug("Setting up RPC endpoints");
+    final List<PluginRpcMethod> pluginRpcMethods = createServerMethods();
+    besuContext
+        .getService(RpcEndpointService.class)
+        .ifPresent(
+            rpcEndpointService ->
+                pluginRpcMethods.forEach(
+                    method -> {
+                      LOG.info(
+                          "Registering RPC plugin endpoint {}_{}",
+                          method.getNamespace(),
+                          method.getName());
+                      rpcEndpointService.registerRPCEndpoint(
+                          method.getNamespace(), method.getName(), method::execute);
+                    }));
+
+    LOG.debug("Register trieLog service");
+    final TrieLogService trieLogService = new FleetTrieLogService();
+    besuContext.addService(TrieLogService.class, trieLogService);
+    pluginServiceProvider.provideService(TrieLogService.class, () -> trieLogService);
+  }
+
+  @Override
+  public void start() {
+
+    LOG.debug("Loading rlp converter service");
+    final RlpConverterService rlpConverterService =
+        besuContext
+            .getService(RlpConverterService.class)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Expecting a rlp converter service, but none found."));
+    pluginServiceProvider.provideService(RlpConverterService.class, () -> rlpConverterService);
+
+    LOG.debug("Loading blockchain service");
+    final BlockchainService blockchainService =
+        besuContext
+            .getService(BlockchainService.class)
+            .orElseThrow(
+                () -> new IllegalStateException("Expecting a blockchain service, but none found."));
+    pluginServiceProvider.provideService(BlockchainService.class, () -> blockchainService);
+
+    LOG.debug("Loading synchronization service and configuration");
+    final SynchronizationService synchronizationService =
+        besuContext
+            .getService(SynchronizationService.class)
+            .orElseThrow(
+                () -> new IllegalStateException("Expecting a sync service, but none found."));
+    pluginServiceProvider.provideService(
+        SynchronizationService.class, () -> synchronizationService);
+    if (isFollower()) {
+      // disable trie for follower
+      synchronizationService.setWorldStateConfiguration(() -> true);
+    }
+
+    LOG.debug("Loading P2P network service");
+    final P2PService p2PService =
+        besuContext
+            .getService(P2PService.class)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException("Expecting a P2P network service, but none found."));
+    pluginServiceProvider.provideService(P2PService.class, () -> p2PService);
+
+    LOG.debug("Loading Besu configuration service");
+    besuConfiguration =
+        besuContext
+            .getService(BesuConfiguration.class)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Expecting a besu configuration service, but none found."));
+
+    LOG.debug("Starting RPC client method");
+    if (besuConfiguration.getRpcHttpHost().isEmpty()
+        || besuConfiguration.getRpcHttpPort().isEmpty()) {
+      throw new IllegalStateException("rpc feature is needed");
+    }
+    loadingClientsMethods();
+
+    LOG.debug("Setting up connection parameters");
+    final PeerNetworkMaintainer peerNetworkMaintainer;
+    if (isLeader()) {
+      peerNetworkMaintainer = new LeaderPeerNetworkMaintainer(peerManagers);
+    } else {
+      peerNetworkMaintainer =
+          new FollowerPeerNetworkMaintainer(
+              CLI_OPTIONS.getLeaderPeerHttpHost(),
+              CLI_OPTIONS.getLeaderPeerHttpPort(),
+              besuConfiguration.getRpcHttpHost().get(),
+              besuConfiguration.getRpcHttpPort().get(),
+              peerManagers,
+              webClient);
+    }
+    peerNetworkMaintainer.start();
+  }
+
+  @Override
+  public void afterExternalServicePostMainLoop() {
+    if (isFollower()) {
+      LOG.debug("Disable transaction pool");
+      besuContext
+          .getService(TransactionPoolService.class)
+          .ifPresent(TransactionPoolService::disableTransactionPool);
+      final SynchronizationService synchronizationService =
+          pluginServiceProvider.getService(SynchronizationService.class);
+      if (synchronizationService.isInitialSyncPhaseDone()) {
+        fleetModeSynchronizer.disableInitialSync();
+      }
+    }
+  }
+
+  @Override
+  public void stop() {
+    // no-op
+  }
+
+  private List<PluginRpcMethod> createServerMethods() {
+    final List<PluginRpcMethod> methods = new ArrayList<>();
+    final BlockContextProvider blockContextProvider =
+        new BlockContextProvider(pluginServiceProvider, new FleetGetBlockClient(webClient));
+    fleetModeSynchronizer = new FleetModeSynchronizer(pluginServiceProvider, blockContextProvider);
+    methods.add(new FleetAddFollowerServer(peerManagers));
+    methods.add(new FleetGetBlockServer(convertMapperProvider, pluginServiceProvider));
+    methods.add(
+        new FleetShipNewHeadServer(fleetModeSynchronizer::syncNewHead, pluginServiceProvider));
+    if (isFollower()) {}
+    return methods;
+  }
+
+  @SuppressWarnings("FutureReturnValueIgnored")
+  private List<PluginRpcMethod> loadingClientsMethods() {
+    final List<PluginRpcMethod> methods = new ArrayList<>();
+
+    if (isLeader()) {
+      LOG.debug("Adding blockchain observer");
+      final BlockAddedObserver blockAddedObserver =
+          new BlockAddedObserver(new FleetShipNewHeadClient(webClient));
+      besuContext
+          .getService(BesuEvents.class)
+          .ifPresentOrElse(
+              besuEvents -> {
+                besuEvents.addBlockAddedListener(blockAddedObserver);
+              },
+              () -> LOG.error("Could not obtain BesuEvents"));
+    } else if (isFollower()) {
+      LOG.debug("Adding sync status observer");
+      besuContext
+          .getService(BesuEvents.class)
+          .ifPresentOrElse(
+              besuEvents -> {
+                // besuEvents.(new InitialSyncCompletionObserver());
+              },
+              () -> LOG.error("Could not obtain BesuEvents"));
+    }
+    return methods;
+  }
+
+  private boolean isLeader() {
+    return CLI_OPTIONS.getNodeRole().equals(Role.LEADER);
+  }
+
+  private boolean isFollower() {
+    return CLI_OPTIONS.getNodeRole().equals(Role.FOLLOWER);
+  }
+}
