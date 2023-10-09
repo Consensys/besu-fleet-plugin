@@ -195,10 +195,12 @@ public class FleetModeSynchronizer {
     if (isWaiting.getAndSet(false)) {
       final SynchronizationService synchronizationService =
           pluginServiceProvider.getService(SynchronizationService.class);
-      final P2PService p2PService = pluginServiceProvider.getService(P2PService.class);
-      LOG.debug("Disable FullSync and P2P discovery");
-      synchronizationService.stopSynchronizer();
-      p2PService.disableDiscovery();
+      if (synchronizationService.isInitialSyncPhaseDone()) {
+        final P2PService p2PService = pluginServiceProvider.getService(P2PService.class);
+        LOG.debug("Disable FullSync and P2P discovery");
+        synchronizationService.stopSynchronizer();
+        p2PService.disableDiscovery();
+      }
     }
   }
 

@@ -26,8 +26,9 @@ Or, run the besu with follower mode:
 --plugin-fleet-node-role=FOLLOWER \
 --rpc-http-apis=FLEET,ETH \
 --rpc-http-enabled \
---rpc-http-host=127.0.0.1
---rpc-http-port=8888
+--rpc-http-host=127.0.0.1 \
+--rpc-http-port=8888 \
+--Xchain-pruning-blocks-retained=512 \
 --plugin-fleet-leader-http-host=127.0.0.1 \
 --plugin-fleet-leader-http-port=8545 \
 ```

@@ -14,15 +14,31 @@
  */
 package net.consensys.fleet.follower.event;
 
+import net.consensys.fleet.follower.sync.FleetModeSynchronizer;
+
+import java.util.function.Supplier;
+
 import org.hyperledger.besu.plugin.services.BesuEvents;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class InitialSyncCompletionObserver implements BesuEvents.InitialSyncCompletionListener {
+  private static final Logger LOG = LoggerFactory.getLogger(InitialSyncCompletionObserver.class);
+
+  private final Supplier<FleetModeSynchronizer> fleetModeSynchronizerSupplier;
+
+  public InitialSyncCompletionObserver(
+      final Supplier<FleetModeSynchronizer> fleetModeSynchronizerSupplier) {
+    this.fleetModeSynchronizerSupplier = fleetModeSynchronizerSupplier;
+  }
 
   @Override
   public void onInitialSyncCompleted() {
-    // when snapsync finished
-    // disable P2P and trx pool
-    // activate fleet sync
+    if (fleetModeSynchronizerSupplier.get() != null) {
+      fleetModeSynchronizerSupplier.get().disableInitialSync();
+    } else {
+      LOG.debug("Cannot disable initial sync because fleet mode synchronizer is not ready");
+    }
   }
 
   @Override
