@@ -12,12 +12,40 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.fleet.leader.event;
+package net.consensys.fleet.common.rpc.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
-public interface NewHeadObserver {
+public class NewHeadParams {
 
-  void onNewHead(final BlockHeader head, final Hash safeBlock, final Hash finalizedBlock);
+  @JsonProperty("newHead")
+  private BlockHeader head;
+
+  @JsonProperty("safeBlock")
+  private Hash safeBlock;
+
+  @JsonProperty("finalizedBlock")
+  private Hash finalizedBlock;
+
+  public NewHeadParams() {}
+
+  public NewHeadParams(final BlockHeader head, final Hash safeBlock, final Hash finalizedBlock) {
+    this.head = head;
+    this.safeBlock = safeBlock;
+    this.finalizedBlock = finalizedBlock;
+  }
+
+  public BlockHeader getHead() {
+    return head;
+  }
+
+  public Hash getSafeBlock() {
+    return safeBlock;
+  }
+
+  public Hash getFinalizedBlock() {
+    return finalizedBlock;
+  }
 }

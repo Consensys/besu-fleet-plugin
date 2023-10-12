@@ -35,7 +35,7 @@ public class InitialSyncCompletionObserver implements BesuEvents.InitialSyncComp
   @Override
   public void onInitialSyncCompleted() {
     if (fleetModeSynchronizerSupplier.get() != null) {
-      fleetModeSynchronizerSupplier.get().disableInitialSync();
+      fleetModeSynchronizerSupplier.get().tryDisableInitialSync();
     } else {
       LOG.debug("Cannot disable initial sync because fleet mode synchronizer is not ready");
     }

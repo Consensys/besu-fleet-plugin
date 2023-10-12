@@ -178,7 +178,7 @@ public class FleetPlugin implements BesuPlugin {
   public void afterExternalServicePostMainLoop() {
     if (isFollower()) {
       disableTransactionPool();
-      fleetModeSynchronizer.disableInitialSync();
+      fleetModeSynchronizer.tryDisableInitialSync();
     }
   }
 
@@ -219,7 +219,11 @@ public class FleetPlugin implements BesuPlugin {
     methods.add(new FleetGetBlockServer(convertMapperProvider, pluginServiceProvider));
     fleetModeSynchronizer = new FleetModeSynchronizer(pluginServiceProvider, blockContextProvider);
     methods.add(
-        new FleetShipNewHeadServer(fleetModeSynchronizer::syncNewHead, pluginServiceProvider));
+        new FleetShipNewHeadServer(
+            (head, safeBlock, finalizedBlock) ->
+                fleetModeSynchronizer.syncNewHead(head, safeBlock, finalizedBlock),
+            convertMapperProvider,
+            pluginServiceProvider));
     return methods;
   }
 
@@ -229,7 +233,7 @@ public class FleetPlugin implements BesuPlugin {
         /* ********** LEADER ************* */
         LOG.debug("Adding blockchain observer");
         final BlockAddedObserver blockAddedObserver =
-            new BlockAddedObserver(new FleetShipNewHeadClient(webClient));
+            new BlockAddedObserver(pluginServiceProvider, new FleetShipNewHeadClient(webClient));
         besuContext
             .getService(BesuEvents.class)
             .ifPresentOrElse(

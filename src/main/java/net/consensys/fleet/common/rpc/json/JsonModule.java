@@ -15,6 +15,7 @@
 package net.consensys.fleet.common.rpc.json;
 
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionReceipt;
@@ -24,6 +25,8 @@ public class JsonModule extends SimpleModule {
 
   public JsonModule(final RlpConverterService rlpConverterService) {
     super();
+    addSerializer(Hash.class, new HashJsonSerializer());
+    addDeserializer(Hash.class, new HashJsonDeserializer());
     addSerializer(BlockHeader.class, new BlockHeaderJsonSerializer(rlpConverterService));
     addDeserializer(BlockHeader.class, new BlockHeaderJsonDeserializer(rlpConverterService));
     addSerializer(BlockBody.class, new BlockBodyJsonSerializer(rlpConverterService));

@@ -15,11 +15,11 @@
 package net.consensys.fleet.follower.rpc.server;
 
 import net.consensys.fleet.common.plugin.PluginServiceProvider;
+import net.consensys.fleet.common.rpc.json.ConvertMapperProvider;
+import net.consensys.fleet.common.rpc.model.NewHeadParams;
 import net.consensys.fleet.common.rpc.server.PluginRpcMethod;
 import net.consensys.fleet.leader.event.NewHeadObserver;
 
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.rlp.RlpConverterService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 import org.slf4j.Logger;
@@ -29,11 +29,15 @@ public class FleetShipNewHeadServer implements PluginRpcMethod {
   private static final Logger LOG = LoggerFactory.getLogger(FleetShipNewHeadServer.class);
 
   private final NewHeadObserver newHeadObserver;
+  private final ConvertMapperProvider convertMapperProvider;
   private final PluginServiceProvider pluginServiceProvider;
 
   public FleetShipNewHeadServer(
-      final NewHeadObserver newHeadObserver, final PluginServiceProvider pluginServiceProvider) {
+      final NewHeadObserver newHeadObserver,
+      final ConvertMapperProvider convertMapperProvider,
+      final PluginServiceProvider pluginServiceProvider) {
     this.newHeadObserver = newHeadObserver;
+    this.convertMapperProvider = convertMapperProvider;
     this.pluginServiceProvider = pluginServiceProvider;
   }
 
@@ -49,16 +53,31 @@ public class FleetShipNewHeadServer implements PluginRpcMethod {
 
   @Override
   public Object execute(PluginRpcRequest rpcRequest) {
+
     LOG.debug("execute {} request with body {}", getName(), rpcRequest.getParams());
-    if (rpcRequest.getParams().length > 0 && isRlpConverterReady()) {
-      final RlpConverterService rlpConverterService =
-          pluginServiceProvider.getService(RlpConverterService.class);
-      final BlockHeader blockHeader =
-          rlpConverterService.buildHeaderFromRlp(
-              Bytes.fromHexString(rpcRequest.getParams()[0].toString()));
-      LOG.debug("receive new head {}({})", blockHeader.getNumber(), blockHeader.getBlockHash());
-      newHeadObserver.onNewHead(blockHeader);
+
+    try {
+      if (isRlpConverterReady()) {
+        final NewHeadParams newHeadParams =
+            convertMapperProvider
+                .getJsonConverter()
+                .readValue(rpcRequest.getParams()[0].toString(), NewHeadParams.class);
+        LOG.debug(
+            "receive new head {}({}) , safe block {} and finalized block {}",
+            newHeadParams.getHead().getNumber(),
+            newHeadParams.getHead().getBlockHash(),
+            newHeadParams.getSafeBlock(),
+            newHeadParams.getFinalizedBlock());
+        newHeadObserver.onNewHead(
+            newHeadParams.getHead(),
+            newHeadParams.getSafeBlock(),
+            newHeadParams.getFinalizedBlock());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      LOG.trace("Ignore invalid request for method {} with {}", getName(), rpcRequest.getParams());
     }
+
     return null;
   }
 

@@ -90,7 +90,7 @@ public class WebClientWrapper {
             .put("jsonrpc", JSON_RPC_VERSION)
             .put("id", 1)
             .put("method", methodName)
-            .put("params", List.of(convertMapperProvider.getJsonConverter().valueToTree(o)));
+            .put("params", List.of(convertMapperProvider.getJsonConverter().writeValueAsString(o)));
 
     peerManagers
         .getPeers()

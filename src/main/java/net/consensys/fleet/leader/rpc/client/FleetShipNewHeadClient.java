@@ -16,13 +16,13 @@ package net.consensys.fleet.leader.rpc.client;
 
 import net.consensys.fleet.common.rpc.client.AbstractStateRpcSender;
 import net.consensys.fleet.common.rpc.client.WebClientWrapper;
+import net.consensys.fleet.common.rpc.model.NewHeadParams;
 
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.hyperledger.besu.plugin.data.BlockHeader;
 
-public class FleetShipNewHeadClient extends AbstractStateRpcSender<BlockHeader, Boolean> {
+public class FleetShipNewHeadClient extends AbstractStateRpcSender<NewHeadParams, Boolean> {
 
   private static final String METHOD_NAME = "fleet_shipNewHead";
 
@@ -36,7 +36,7 @@ public class FleetShipNewHeadClient extends AbstractStateRpcSender<BlockHeader, 
   }
 
   @Override
-  public CompletableFuture<Boolean> sendData(final BlockHeader data) {
+  public CompletableFuture<Boolean> sendData(final NewHeadParams data) {
     final CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
     try {
       webClient.sendToFollowers(ENDPOINT, getMethodeName(), data);
