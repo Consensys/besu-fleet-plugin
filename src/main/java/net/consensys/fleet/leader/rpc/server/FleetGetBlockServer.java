@@ -16,14 +16,20 @@ package net.consensys.fleet.leader.rpc.server;
 
 import net.consensys.fleet.common.plugin.PluginServiceProvider;
 import net.consensys.fleet.common.rpc.json.ConvertMapperProvider;
-import net.consensys.fleet.common.rpc.model.GetBlockParams;
+import net.consensys.fleet.common.rpc.model.GetBlockRequest;
+import net.consensys.fleet.common.rpc.model.GetBlockResponse;
 import net.consensys.fleet.common.rpc.server.PluginRpcMethod;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.BlockContext;
 import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.TransactionReceipt;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TrieLogService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
@@ -33,7 +39,9 @@ import org.slf4j.LoggerFactory;
 
 public class FleetGetBlockServer implements PluginRpcMethod {
 
-  private static final Logger LOG = LoggerFactory.getLogger(FleetAddFollowerServer.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FleetGetBlockServer.class);
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final ConvertMapperProvider convertMapperProvider;
   private final PluginServiceProvider pluginServiceProvider;
 
@@ -62,22 +70,41 @@ public class FleetGetBlockServer implements PluginRpcMethod {
           pluginServiceProvider.getService(BlockchainService.class);
       final TrieLogProvider trieLogProvider =
           pluginServiceProvider.getService(TrieLogService.class).getTrieLogProvider();
+      try {
+        final GetBlockRequest getBlockRequest =
+            OBJECT_MAPPER.readValue(rpcRequest.getParams()[0].toString(), GetBlockRequest.class);
+        final long blockNumber = getBlockRequest.getBlockNumber();
+        final Optional<BlockContext> blockByNumber =
+            blockchainService.getBlockByNumber(blockNumber);
+        if (blockByNumber.isPresent()) {
+          final BlockHeader blockHeader = blockByNumber.get().getBlockHeader();
+          final List<TransactionReceipt> receipts;
+          if (getBlockRequest.isFetchReceipts()) {
+            receipts =
+                blockchainService
+                    .getReceiptsByBlockHash(blockHeader.getBlockHash())
+                    .orElse(Collections.emptyList());
+          } else {
+            receipts = Collections.emptyList();
+          }
+          return convertMapperProvider
+              .getJsonConverter()
+              .valueToTree(
+                  new GetBlockResponse(
+                      blockHeader,
+                      blockByNumber.get().getBlockBody(),
+                      receipts,
+                      trieLogProvider
+                          .getRawTrieLogLayer(blockHeader.getBlockHash())
+                          .map(Bytes::toHexString)
+                          .orElseThrow()));
+        }
 
-      final long blockNumber = Long.decode(rpcRequest.getParams()[0].toString());
-      final Optional<BlockContext> blockByNumber = blockchainService.getBlockByNumber(blockNumber);
-      if (blockByNumber.isPresent()) {
-        final BlockHeader blockHeader = blockByNumber.get().getBlockHeader();
-        return convertMapperProvider
-            .getJsonConverter()
-            .valueToTree(
-                new GetBlockParams(
-                    blockHeader,
-                    blockByNumber.get().getBlockBody(),
-                    trieLogProvider
-                        .getRawTrieLogLayer(blockHeader.getBlockHash())
-                        .map(Bytes::toHexString)
-                        .orElseThrow()));
+      } catch (JsonProcessingException e) {
+        LOG.trace(
+            "Ignore invalid request for method {} with {}", getName(), rpcRequest.getParams());
       }
+      return null;
     }
     return null;
   }

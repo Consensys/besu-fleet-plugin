@@ -74,7 +74,6 @@ public class FleetShipNewHeadServer implements PluginRpcMethod {
             newHeadParams.getFinalizedBlock());
       }
     } catch (Exception e) {
-      e.printStackTrace();
       LOG.trace("Ignore invalid request for method {} with {}", getName(), rpcRequest.getParams());
     }
 

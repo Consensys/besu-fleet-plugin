@@ -20,10 +20,16 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockContext;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -38,33 +44,42 @@ public class FleetModeSynchronizer {
 
   private static final Logger LOG = LoggerFactory.getLogger(FleetModeSynchronizer.class);
 
-  private static final int MAX_BLOCKS_TO_IMPORT_AT_ONCE = 500;
+  private static final ScheduledExecutorService EXECUTOR_SERVICE =
+      Executors.newSingleThreadScheduledExecutor();
 
   private final AtomicBoolean isWaitingForSync = new AtomicBoolean(true);
-  private final AtomicBoolean isRunning = new AtomicBoolean();
 
   private final PluginServiceProvider pluginServiceProvider;
   private final BlockContextProvider blockContextProvider;
+  private final Integer
+      maxBlocksPerPersist; // limit the number of blocks persisted in a single operation
+  private final Integer headDistanceForReceiptFetch;
+
+  private final long retryFactor = 2;
+
+  private long syncDelay;
+
+  private ScheduledFuture<?> syncScheduler;
 
   private BlockHeader leaderHeader;
 
   public FleetModeSynchronizer(
       final PluginServiceProvider pluginServiceProvider,
-      final BlockContextProvider blockContextProvider) {
+      final BlockContextProvider blockContextProvider,
+      final Integer maxBlocksPerPersist,
+      final Integer headDistanceForReceiptFetch) {
     this.pluginServiceProvider = pluginServiceProvider;
     this.blockContextProvider = blockContextProvider;
+    this.maxBlocksPerPersist = maxBlocksPerPersist;
+    this.headDistanceForReceiptFetch = headDistanceForReceiptFetch;
   }
 
-  public void syncNewHead(final BlockHeader head, final Hash safeBlock, final Hash finalizedBlock) {
+  public synchronized void syncNewHead(
+      final BlockHeader head, final Hash safeBlock, final Hash finalizedBlock) {
     this.leaderHeader = head;
-
     if (isBlockchainServiceReady()) {
-      final BlockchainService blockchainService =
-          pluginServiceProvider.getService(BlockchainService.class);
-
       final SynchronizationService synchronizationService =
           pluginServiceProvider.getService(SynchronizationService.class);
-
       synchronizationService.fireNewUnverifiedForkchoiceEvent(
           head.getBlockHash(), safeBlock, finalizedBlock);
       LOG.debug(
@@ -72,145 +87,190 @@ public class FleetModeSynchronizer {
 
       if (isWaitingForSync.get()) {
         LOG.debug("Waiting for the end of the initial synchronization phase");
-      } else if (!isRunning.getAndSet(true)) {
-
-        final TrieLogProvider trieLogProvider =
-            pluginServiceProvider.getService(TrieLogService.class).getTrieLogProvider();
-        BlockHeader chainHead = blockchainService.getChainHead();
-        try {
-          do {
-
-            final List<BlockContextProvider.FleetBlockContext> rollBackward = new ArrayList<>();
-            final List<BlockContextProvider.FleetBlockContext> rollForward = new ArrayList<>();
-
-            BlockContext persistedBlock = getLocalBlockContext(chainHead.getNumber()).orElseThrow();
-            Hash persistedBlockHash = persistedBlock.getBlockHeader().getBlockHash();
-
-            final long targetBlockNumber =
-                calculateRangeLimit(chainHead.getNumber(), this.leaderHeader.getNumber());
-            BlockContext targetBlock = getLeaderBlockContext(targetBlockNumber).orElseThrow();
-            Hash targetBlockHash = targetBlock.getBlockHeader().getBlockHash();
-
-            LOG.debug(
-                "New head (or leader block) being detected. {} ({})",
-                targetBlock.getBlockHeader().getNumber(),
-                targetBlock.getBlockHeader().getBlockHash());
-            LOG.debug(
-                "Detected local chain head {} ({}",
-                chainHead.getNumber(),
-                chainHead.getBlockHash());
-
-            while (persistedBlock.getBlockHeader().getNumber()
-                > targetBlock.getBlockHeader().getNumber()) {
-              LOG.debug("Rollback {}", persistedBlockHash);
-              rollBackward.add(
-                  getLocalBlockContext(persistedBlock.getBlockHeader().getNumber()).orElseThrow());
-              persistedBlock =
-                  getLocalBlockContext(persistedBlock.getBlockHeader().getNumber() - 1)
-                      .orElseThrow();
-              persistedBlockHash = persistedBlock.getBlockHeader().getBlockHash();
-            }
-
-            while (persistedBlock.getBlockHeader().getNumber()
-                < targetBlock.getBlockHeader().getNumber()) {
-              LOG.debug("Rollforward {}", targetBlockHash);
-              rollForward.add(
-                  getLeaderBlockContext(targetBlock.getBlockHeader().getNumber()).orElseThrow());
-              targetBlock =
-                  getLeaderBlockContext(targetBlock.getBlockHeader().getNumber() - 1).orElseThrow();
-              targetBlockHash = targetBlock.getBlockHeader().getBlockHash();
-            }
-
-            while (!persistedBlockHash.equals(targetBlockHash)) {
-              LOG.debug("Paired Rollback {}", persistedBlockHash);
-              LOG.debug("Paired Rollforward {}", targetBlockHash);
-              rollForward.add(
-                  getLeaderBlockContext(targetBlock.getBlockHeader().getNumber()).orElseThrow());
-              targetBlock =
-                  getLeaderBlockContext(targetBlock.getBlockHeader().getNumber() - 1).orElseThrow();
-
-              rollBackward.add(
-                  getLeaderBlockContext(persistedBlock.getBlockHeader().getNumber()).orElseThrow());
-              persistedBlock =
-                  getLocalBlockContext(persistedBlock.getBlockHeader().getNumber() - 1)
-                      .orElseThrow();
-
-              targetBlockHash = targetBlock.getBlockHeader().getBlockHash();
-              persistedBlockHash = persistedBlock.getBlockHeader().getBlockHash();
-            }
-
-            for (BlockContextProvider.FleetBlockContext blockContext : rollBackward) {
-              LOG.debug("Attempting RollBack of {}", blockContext.getBlockHeader().getBlockHash());
-              Optional<Bytes> maybeTrieLog = blockContext.trieLogRlp();
-              if (maybeTrieLog.isPresent()) {
-                trieLogProvider.saveRawTrieLogLayer(
-                    blockContext.getBlockHeader().getBlockHash(), maybeTrieLog.get());
-                final boolean result =
-                    synchronizationService.setHeadUnsafe(
-                        blockContext.getBlockHeader(), blockContext.getBlockBody());
-                if (!result) {
-                  throw new Exception(
-                      "Unable to complete rollback of block %s"
-                          .formatted(blockContext.getBlockHeader().getBlockHash()));
-                }
-              }
-            }
-
-            rollForward.sort(Comparator.comparingLong(o -> o.getBlockHeader().getNumber()));
-
-            for (BlockContextProvider.FleetBlockContext blockContext : rollForward) {
-              LOG.debug(
-                  "Attempting RollForward of {}", blockContext.getBlockHeader().getBlockHash());
-              // save trielog and set head
-              Optional<Bytes> maybeTrieLog = blockContext.trieLogRlp();
-              if (maybeTrieLog.isPresent()) {
-                trieLogProvider.saveRawTrieLogLayer(
-                    blockContext.getBlockHeader().getBlockHash(), maybeTrieLog.get());
-                final boolean result =
-                    synchronizationService.setHeadUnsafe(
-                        blockContext.getBlockHeader(), blockContext.getBlockBody());
-                if (!result) {
-                  throw new Exception(
-                      "Error occurred while importing block %s"
-                          .formatted(blockContext.getBlockHeader().getBlockHash()));
-                }
-              }
-            }
-
-            final BlockContext oldHead = getLocalBlockContext(chainHead.getNumber()).orElseThrow();
-            // update chain head
-            chainHead = blockchainService.getChainHead();
-            final BlockContext newHead = getLocalBlockContext(chainHead.getNumber()).orElseThrow();
-
-            if (newHead.getBlockHeader().getNumber() - oldHead.getBlockHeader().getNumber() != 1) {
-              LOG.info(
-                  "Fleet import progression: block {} ({}) reached.",
-                  newHead.getBlockHeader().getNumber(),
-                  newHead.getBlockHeader().getBlockHash());
-            } else {
-              LOG.info(
-                  String.format(
-                      "Fleet Imported #%,d / %d tx / %d ws / %d ds / %d om / %,d (%01.1f%%) gas / (%s) ",
-                      newHead.getBlockHeader().getNumber(),
-                      newHead.getBlockBody().getTransactions().size(),
-                      newHead.getBlockBody().getWithdrawals().map(List::size).orElse(0),
-                      newHead.getBlockBody().getDeposits().map(List::size).orElse(0),
-                      newHead.getBlockBody().getOmmers().size(),
-                      newHead.getBlockHeader().getGasUsed(),
-                      (newHead.getBlockHeader().getGasUsed() * 100.0)
-                          / newHead.getBlockHeader().getGasLimit(),
-                      newHead.getBlockHeader().getBlockHash().toHexString()));
-            }
-          } while (!chainHead.getBlockHash().equals(this.leaderHeader.getBlockHash()));
-        } catch (Exception e) {
-          LOG.error("Error during sync, retry later because of : {}", e.getMessage());
-        }
-        isRunning.set(false);
+      } else {
+        disableWaitingSync();
+        startSync();
       }
     }
   }
 
-  public void tryDisableInitialSync() {
+  private void disableWaitingSync() {
+    if (syncScheduler != null) {
+      syncScheduler.cancel(false);
+    }
+    syncDelay = 1;
+  }
+
+  private void startSync() {
+    if (syncScheduler == null || syncScheduler.isDone()) {
+      syncScheduler =
+          EXECUTOR_SERVICE.schedule(
+              () -> {
+                if (isBlockchainServiceReady()) {
+                  final BlockchainService blockchainService =
+                      pluginServiceProvider.getService(BlockchainService.class);
+
+                  final SynchronizationService synchronizationService =
+                      pluginServiceProvider.getService(SynchronizationService.class);
+
+                  final TrieLogProvider trieLogProvider =
+                      pluginServiceProvider.getService(TrieLogService.class).getTrieLogProvider();
+                  BlockHeader chainHead = blockchainService.getChainHead();
+                  try {
+                    do {
+
+                      final List<BlockContextProvider.FleetBlockContext> rollBackward =
+                          new ArrayList<>();
+                      final List<BlockContextProvider.FleetBlockContext> rollForward =
+                          new ArrayList<>();
+
+                      BlockContext persistedBlock =
+                          getLocalBlockContext(chainHead.getNumber()).orElseThrow();
+                      Hash persistedBlockHash = persistedBlock.getBlockHeader().getBlockHash();
+
+                      final long targetBlockNumber =
+                          calculateRangeLimit(chainHead.getNumber(), this.leaderHeader.getNumber());
+                      BlockContext targetBlock =
+                          getLeaderBlockContext(targetBlockNumber)
+                              .orElseThrow(MissingBlockException::new);
+                      Hash targetBlockHash = targetBlock.getBlockHeader().getBlockHash();
+
+                      LOG.debug(
+                          "New head (or leader block) being detected. {} ({})",
+                          targetBlock.getBlockHeader().getNumber(),
+                          targetBlock.getBlockHeader().getBlockHash());
+                      LOG.debug(
+                          "Detected local chain head {} ({}",
+                          chainHead.getNumber(),
+                          chainHead.getBlockHash());
+
+                      while (persistedBlock.getBlockHeader().getNumber()
+                          > targetBlock.getBlockHeader().getNumber()) {
+                        LOG.debug("Rollback {}", persistedBlockHash);
+                        rollBackward.add(
+                            getLocalBlockContext(persistedBlock.getBlockHeader().getNumber())
+                                .orElseThrow());
+                        persistedBlock =
+                            getLocalBlockContext(persistedBlock.getBlockHeader().getNumber() - 1)
+                                .orElseThrow();
+                        persistedBlockHash = persistedBlock.getBlockHeader().getBlockHash();
+                      }
+
+                      while (persistedBlock.getBlockHeader().getNumber()
+                          < targetBlock.getBlockHeader().getNumber()) {
+                        LOG.debug("Rollforward {}", targetBlockHash);
+                        rollForward.add(
+                            getLeaderBlockContext(targetBlock.getBlockHeader().getNumber())
+                                .orElseThrow(MissingBlockException::new));
+                        targetBlock =
+                            getLeaderBlockContext(targetBlock.getBlockHeader().getNumber() - 1)
+                                .orElseThrow(MissingBlockException::new);
+                        targetBlockHash = targetBlock.getBlockHeader().getBlockHash();
+                      }
+
+                      while (!persistedBlockHash.equals(targetBlockHash)) {
+                        LOG.debug("Paired Rollback {}", persistedBlockHash);
+                        LOG.debug("Paired Rollforward {}", targetBlockHash);
+                        rollForward.add(
+                            getLeaderBlockContext(targetBlock.getBlockHeader().getNumber())
+                                .orElseThrow(MissingBlockException::new));
+                        targetBlock =
+                            getLeaderBlockContext(targetBlock.getBlockHeader().getNumber() - 1)
+                                .orElseThrow(MissingBlockException::new);
+
+                        rollBackward.add(
+                            getLocalBlockContext(persistedBlock.getBlockHeader().getNumber())
+                                .orElseThrow(MissingBlockException::new));
+                        persistedBlock =
+                            getLocalBlockContext(persistedBlock.getBlockHeader().getNumber() - 1)
+                                .orElseThrow();
+
+                        targetBlockHash = targetBlock.getBlockHeader().getBlockHash();
+                        persistedBlockHash = persistedBlock.getBlockHeader().getBlockHash();
+                      }
+
+                      for (BlockContextProvider.FleetBlockContext blockContext : rollBackward) {
+                        LOG.debug(
+                            "Attempting RollBack of {}",
+                            blockContext.getBlockHeader().getBlockHash());
+                        Optional<Bytes> maybeTrieLog = blockContext.trieLogRlp();
+                        maybeTrieLog.ifPresent(
+                            bytes ->
+                                trieLogProvider.saveRawTrieLogLayer(
+                                    blockContext.getBlockHeader().getBlockHash(), bytes));
+                        final boolean result =
+                            synchronizationService.setHeadUnsafe(
+                                blockContext.getBlockHeader(), blockContext.getBlockBody());
+                        if (!result) {
+                          throw new Exception(
+                              "Unable to complete rollback of block %s"
+                                  .formatted(blockContext.getBlockHeader().getBlockHash()));
+                        }
+                      }
+
+                      rollForward.sort(
+                          Comparator.comparingLong(o -> o.getBlockHeader().getNumber()));
+
+                      for (BlockContextProvider.FleetBlockContext blockContext : rollForward) {
+                        LOG.debug(
+                            "Attempting RollForward of {}",
+                            blockContext.getBlockHeader().getBlockHash());
+                        // save trielog and set head
+                        Optional<Bytes> maybeTrieLog = blockContext.trieLogRlp();
+                        if (maybeTrieLog.isPresent()) {
+                          // save trielog
+                          trieLogProvider.saveRawTrieLogLayer(
+                              blockContext.getBlockHeader().getBlockHash(), maybeTrieLog.get());
+                          // save block
+                          blockchainService.storeBlock(
+                              blockContext.getBlockHeader(),
+                              blockContext.getBlockBody(),
+                              blockContext.getReceipts());
+                          // update head
+                          final boolean result =
+                              synchronizationService.setHeadUnsafe(
+                                  blockContext.getBlockHeader(), blockContext.getBlockBody());
+                          if (!result) {
+                            throw new Exception(
+                                "Error occurred while importing block %s"
+                                    .formatted(blockContext.getBlockHeader().getBlockHash()));
+                          }
+                        }
+                      }
+
+                      final BlockContext oldHead =
+                          getLocalBlockContext(chainHead.getNumber()).orElseThrow();
+                      // update chain head
+                      chainHead = blockchainService.getChainHead();
+                      final BlockContext newHead =
+                          getLocalBlockContext(chainHead.getNumber()).orElseThrow();
+
+                      if (newHead.getBlockHeader().getNumber()
+                              - oldHead.getBlockHeader().getNumber()
+                          != 1) {
+                        LOG.info(
+                            "Fleet import progression: block {} ({}) reached.",
+                            newHead.getBlockHeader().getNumber(),
+                            newHead.getBlockHeader().getBlockHash());
+                      } else {
+                        logImportedBlockInfo(newHead.getBlockHeader(), newHead.getBlockBody());
+                      }
+                    } while (!chainHead.getBlockHash().equals(this.leaderHeader.getBlockHash()));
+                  } catch (MissingBlockException e) {
+                    syncDelay *= retryFactor;
+                    startSync();
+                    LOG.trace("There's missing block in the leader, retry after {} ms", syncDelay);
+                  } catch (Exception e) {
+                    LOG.error("Error during sync because of : {}", e.getMessage());
+                  }
+                }
+              },
+              syncDelay,
+              TimeUnit.MILLISECONDS);
+    }
+  }
+
+  public void disableP2P() {
     final SynchronizationService synchronizationService =
         pluginServiceProvider.getService(SynchronizationService.class);
     if (synchronizationService.isInitialSyncPhaseDone()) {
@@ -222,9 +282,45 @@ public class FleetModeSynchronizer {
     }
   }
 
+  public void disableTrie() {
+    final SynchronizationService synchronizationService =
+        pluginServiceProvider.getService(SynchronizationService.class);
+    if (synchronizationService.isInitialSyncPhaseDone()) {
+      LOG.info("Disable state trie for follower");
+      synchronizationService.disableWorldStateTrie();
+    }
+  }
+
+  private void logImportedBlockInfo(final BlockHeader header, final BlockBody body) {
+    final StringBuilder message = new StringBuilder();
+    message.append("Fleet Imported #%,d / %d tx");
+    final List<Object> messageArgs =
+        new ArrayList<>(List.of(header.getNumber(), body.getTransactions().size()));
+    if (body.getWithdrawals().isPresent()) {
+      message.append(" / %d ws");
+      messageArgs.add(body.getWithdrawals().get().size());
+    }
+    if (body.getDeposits().isPresent()) {
+      message.append(" / %d ds");
+      messageArgs.add(body.getDeposits().get().size());
+    }
+    message.append(" / base fee %s / %,d (%01.1f%%) gas / (%s)");
+    messageArgs.addAll(
+        List.of(
+            header
+                .getBaseFee()
+                .map(Wei::fromQuantity)
+                .map(Wei::toHumanReadableString)
+                .orElse("N/A"),
+            header.getGasUsed(),
+            (header.getGasUsed() * 100.0) / header.getGasLimit(),
+            header.getBlockHash().toHexString()));
+    LOG.info(String.format(message.toString(), messageArgs.toArray()));
+  }
+
   private long calculateRangeLimit(final long min, final long max) {
-    if ((max - min) > (long) MAX_BLOCKS_TO_IMPORT_AT_ONCE) {
-      return min + (long) MAX_BLOCKS_TO_IMPORT_AT_ONCE;
+    if ((max - min) > (long) maxBlocksPerPersist) {
+      return min + (long) maxBlocksPerPersist;
     }
     return max;
   }
@@ -235,11 +331,12 @@ public class FleetModeSynchronizer {
 
   private Optional<BlockContextProvider.FleetBlockContext> getLeaderBlockContext(
       final long blockNumber) {
-    return blockContextProvider.getLeaderBlockContextByNumber(blockNumber);
+    return blockContextProvider.getLeaderBlockContextByNumber(
+        blockNumber, (leaderHeader.getNumber() - blockNumber) <= headDistanceForReceiptFetch);
   }
 
   private Optional<BlockContextProvider.FleetBlockContext> getLocalBlockContext(
       final long blockNumber) {
-    return blockContextProvider.getLocalBlockContextByNumber(blockNumber);
+    return blockContextProvider.getLocalBlockContextByNumber(blockNumber, false);
   }
 }

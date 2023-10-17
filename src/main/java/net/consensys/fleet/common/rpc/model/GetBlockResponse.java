@@ -14,11 +14,15 @@
  */
 package net.consensys.fleet.common.rpc.model;
 
+import java.util.Collections;
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.TransactionReceipt;
 
-public class GetBlockParams {
+public class GetBlockResponse {
 
   @JsonProperty("blockHeader")
   private BlockHeader blockHeader;
@@ -26,15 +30,30 @@ public class GetBlockParams {
   @JsonProperty("blockBody")
   private BlockBody blockBody;
 
+  @JsonProperty("receipts")
+  private List<TransactionReceipt> receipts;
+
   @JsonProperty("trieLogRlp")
   private String trieLogRlp;
 
-  public GetBlockParams() {}
+  public GetBlockResponse() {}
 
-  public GetBlockParams(
+  public GetBlockResponse(
       final BlockHeader blockHeader, final BlockBody blockBody, final String trieLogRlp) {
     this.blockHeader = blockHeader;
     this.blockBody = blockBody;
+    this.receipts = Collections.emptyList();
+    this.trieLogRlp = trieLogRlp;
+  }
+
+  public GetBlockResponse(
+      final BlockHeader blockHeader,
+      final BlockBody blockBody,
+      final List<TransactionReceipt> receipts,
+      final String trieLogRlp) {
+    this.blockHeader = blockHeader;
+    this.blockBody = blockBody;
+    this.receipts = receipts;
     this.trieLogRlp = trieLogRlp;
   }
 
@@ -44,6 +63,10 @@ public class GetBlockParams {
 
   public BlockBody getBlockBody() {
     return blockBody;
+  }
+
+  public List<TransactionReceipt> getReceipts() {
+    return receipts;
   }
 
   public String getTrieLogRlp() {

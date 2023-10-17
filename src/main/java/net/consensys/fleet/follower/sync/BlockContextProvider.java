@@ -15,9 +15,12 @@
 package net.consensys.fleet.follower.sync;
 
 import net.consensys.fleet.common.plugin.PluginServiceProvider;
-import net.consensys.fleet.common.rpc.model.GetBlockParams;
+import net.consensys.fleet.common.rpc.model.GetBlockRequest;
+import net.consensys.fleet.common.rpc.model.GetBlockResponse;
 import net.consensys.fleet.follower.rpc.client.FleetGetBlockClient;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -29,14 +32,12 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockContext;
 import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.TransactionReceipt;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 
 public class BlockContextProvider {
 
   private final Cache<CompositeBlockKey, Optional<FleetBlockContext>> leaderBlock =
-      CacheBuilder.newBuilder().maximumSize(20).expireAfterAccess(1, TimeUnit.MINUTES).build();
-
-  private final Cache<CompositeBlockKey, Optional<FleetBlockContext>> localBlock =
       CacheBuilder.newBuilder().maximumSize(20).expireAfterAccess(1, TimeUnit.MINUTES).build();
 
   private final PluginServiceProvider pluginServiceProvider;
@@ -48,17 +49,21 @@ public class BlockContextProvider {
     this.getBlockClient = getBlockClient;
   }
 
-  public Optional<FleetBlockContext> getLeaderBlockContextByNumber(final long blockNumber) {
+  public Optional<FleetBlockContext> getLeaderBlockContextByNumber(
+      final long blockNumber, final boolean fetchReceipts) {
     try {
       return leaderBlock.get(
           new CompositeBlockKey(blockNumber),
           () -> {
-            GetBlockParams getBlockParams =
-                getBlockClient.sendData(blockNumber).get(1, TimeUnit.SECONDS);
+            GetBlockResponse getBlockParams =
+                getBlockClient
+                    .sendData(new GetBlockRequest(blockNumber, fetchReceipts))
+                    .get(1, TimeUnit.SECONDS);
             return Optional.of(
                 new FleetBlockContext(
                     getBlockParams.getBlockHeader(),
                     getBlockParams.getBlockBody(),
+                    getBlockParams.getReceipts(),
                     Optional.of(Bytes.fromHexString(getBlockParams.getTrieLogRlp()))));
           });
     } catch (Exception e) {
@@ -66,25 +71,29 @@ public class BlockContextProvider {
     }
   }
 
-  public Optional<FleetBlockContext> getLocalBlockContextByNumber(final long number) {
-    try {
-      return localBlock.get(
-          new CompositeBlockKey(number),
-          () -> {
-            final BlockchainService blockchainService =
-                pluginServiceProvider.getService(BlockchainService.class);
-            return blockchainService
-                .getBlockByNumber(number)
-                .map(
-                    blockContext ->
-                        new FleetBlockContext(
-                            blockContext.getBlockHeader(),
-                            blockContext.getBlockBody(),
-                            Optional.empty()));
-          });
-    } catch (Exception e) {
-      return Optional.empty();
-    }
+  public Optional<FleetBlockContext> getLocalBlockContextByNumber(
+      final long number, final boolean fetchReceipts) {
+    final BlockchainService blockchainService =
+        pluginServiceProvider.getService(BlockchainService.class);
+    return blockchainService
+        .getBlockByNumber(number)
+        .map(
+            blockContext -> {
+              final List<TransactionReceipt> receiptsByBlockHash;
+              if (fetchReceipts) {
+                receiptsByBlockHash =
+                    blockchainService
+                        .getReceiptsByBlockHash(blockContext.getBlockHeader().getBlockHash())
+                        .orElse(Collections.emptyList());
+              } else {
+                receiptsByBlockHash = Collections.emptyList();
+              }
+              return new FleetBlockContext(
+                  blockContext.getBlockHeader(),
+                  blockContext.getBlockBody(),
+                  receiptsByBlockHash,
+                  Optional.empty());
+            });
   }
 
   public static class CompositeBlockKey {
@@ -130,14 +139,17 @@ public class BlockContextProvider {
   public static class FleetBlockContext implements BlockContext {
     private final BlockHeader blockHeader;
     private final BlockBody blockBody;
+    private final List<TransactionReceipt> receipts;
     private final Optional<Bytes> trieLogRlp;
 
     public FleetBlockContext(
         final BlockHeader blockHeader,
         final BlockBody blockBody,
+        final List<TransactionReceipt> receipts,
         final Optional<Bytes> trieLogRlp) {
       this.blockHeader = blockHeader;
       this.blockBody = blockBody;
+      this.receipts = receipts;
       this.trieLogRlp = trieLogRlp;
     }
 
@@ -149,6 +161,10 @@ public class BlockContextProvider {
     @Override
     public BlockBody getBlockBody() {
       return blockBody;
+    }
+
+    public List<TransactionReceipt> getReceipts() {
+      return receipts;
     }
 
     public Optional<Bytes> trieLogRlp() {

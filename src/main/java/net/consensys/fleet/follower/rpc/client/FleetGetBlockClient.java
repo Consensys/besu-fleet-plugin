@@ -16,13 +16,14 @@ package net.consensys.fleet.follower.rpc.client;
 
 import net.consensys.fleet.common.rpc.client.AbstractStateRpcSender;
 import net.consensys.fleet.common.rpc.client.WebClientWrapper;
-import net.consensys.fleet.common.rpc.model.GetBlockParams;
+import net.consensys.fleet.common.rpc.model.GetBlockRequest;
+import net.consensys.fleet.common.rpc.model.GetBlockResponse;
 
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 
-public class FleetGetBlockClient extends AbstractStateRpcSender<Long, GetBlockParams> {
+public class FleetGetBlockClient extends AbstractStateRpcSender<GetBlockRequest, GetBlockResponse> {
 
   private static final String METHOD_NAME = "fleet_getBlock";
 
@@ -36,8 +37,8 @@ public class FleetGetBlockClient extends AbstractStateRpcSender<Long, GetBlockPa
   }
 
   @Override
-  public CompletableFuture<GetBlockParams> sendData(Long blockNumber) {
-    final CompletableFuture<GetBlockParams> completableFuture = new CompletableFuture<>();
+  public CompletableFuture<GetBlockResponse> sendData(final GetBlockRequest blockNumber) {
+    final CompletableFuture<GetBlockResponse> completableFuture = new CompletableFuture<>();
     try {
       webClient
           .sendToLeader(ENDPOINT, getMethodeName(), blockNumber)
@@ -46,7 +47,7 @@ public class FleetGetBlockClient extends AbstractStateRpcSender<Long, GetBlockPa
                 if (throwable == null) {
                   try {
                     completableFuture.complete(
-                        webClient.decode(result, "result", GetBlockParams.class));
+                        webClient.decode(result, "result", GetBlockResponse.class));
                   } catch (JsonProcessingException e) {
                     completableFuture.completeExceptionally(e);
                   }

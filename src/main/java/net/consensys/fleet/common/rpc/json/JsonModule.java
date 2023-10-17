@@ -32,5 +32,7 @@ public class JsonModule extends SimpleModule {
     addSerializer(BlockBody.class, new BlockBodyJsonSerializer(rlpConverterService));
     addDeserializer(BlockBody.class, new BlockBodyJsonDeserializer(rlpConverterService));
     addSerializer(TransactionReceipt.class, new BlockReceiptJsonSerializer(rlpConverterService));
+    addDeserializer(
+        TransactionReceipt.class, new BlockReceiptJsonDeserializer(rlpConverterService));
   }
 }

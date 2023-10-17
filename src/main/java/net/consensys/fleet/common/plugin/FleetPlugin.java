@@ -41,7 +41,6 @@ import java.util.Optional;
 import com.google.auto.service.AutoService;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
-import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
@@ -140,10 +139,6 @@ public class FleetPlugin implements BesuPlugin {
                 () -> new IllegalStateException("Expecting a sync service, but none found."));
     pluginServiceProvider.provideService(
         SynchronizationService.class, () -> synchronizationService);
-    if (isFollower()) {
-      // disable trie for follower
-      synchronizationService.setWorldStateConfiguration(() -> true);
-    }
 
     LOG.debug("Loading P2P network service");
     final P2PService p2PService =
@@ -154,31 +149,17 @@ public class FleetPlugin implements BesuPlugin {
                     new IllegalStateException("Expecting a P2P network service, but none found."));
     pluginServiceProvider.provideService(P2PService.class, () -> p2PService);
 
-    LOG.debug("Loading Besu configuration service");
-    BesuConfiguration besuConfiguration =
-        besuContext
-            .getService(BesuConfiguration.class)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Expecting a besu configuration service, but none found."));
-
-    LOG.debug("Starting RPC client method");
-    if (besuConfiguration.getRpcHttpHost().isEmpty()
-        || besuConfiguration.getRpcHttpPort().isEmpty()) {
-      throw new IllegalStateException("rpc feature is needed");
-    }
-
     loadingClientsMethods();
 
-    createPeerNetworkMaintainer(besuConfiguration);
+    createPeerNetworkMaintainer();
   }
 
   @Override
   public void afterExternalServicePostMainLoop() {
     if (isFollower()) {
       disableTransactionPool();
-      fleetModeSynchronizer.tryDisableInitialSync();
+      fleetModeSynchronizer.disableP2P();
+      fleetModeSynchronizer.disableTrie();
     }
   }
 
@@ -187,7 +168,7 @@ public class FleetPlugin implements BesuPlugin {
     // no-op
   }
 
-  private void createPeerNetworkMaintainer(final BesuConfiguration besuConfiguration) {
+  private void createPeerNetworkMaintainer() {
     LOG.debug("Setting up connection parameters");
     final PeerNetworkMaintainer peerNetworkMaintainer;
     switch (CLI_OPTIONS.getNodeRole()) {
@@ -201,8 +182,8 @@ public class FleetPlugin implements BesuPlugin {
             new FollowerPeerNetworkMaintainer(
                 CLI_OPTIONS.getLeaderPeerHttpHost(),
                 CLI_OPTIONS.getLeaderPeerHttpPort(),
-                besuConfiguration.getRpcHttpHost().get(),
-                besuConfiguration.getRpcHttpPort().get(),
+                CLI_OPTIONS.getFollowerPeerHttpHost(),
+                CLI_OPTIONS.getFollowerPeerHttpPort(),
                 peerManagers,
                 webClient);
       }
@@ -217,7 +198,12 @@ public class FleetPlugin implements BesuPlugin {
         new BlockContextProvider(pluginServiceProvider, new FleetGetBlockClient(webClient));
     methods.add(new FleetAddFollowerServer(peerManagers));
     methods.add(new FleetGetBlockServer(convertMapperProvider, pluginServiceProvider));
-    fleetModeSynchronizer = new FleetModeSynchronizer(pluginServiceProvider, blockContextProvider);
+    fleetModeSynchronizer =
+        new FleetModeSynchronizer(
+            pluginServiceProvider,
+            blockContextProvider,
+            CLI_OPTIONS.getMaxBlocksPerPersist(),
+            CLI_OPTIONS.getHeadDistanceForReceiptFetch());
     methods.add(
         new FleetShipNewHeadServer(
             (head, safeBlock, finalizedBlock) ->

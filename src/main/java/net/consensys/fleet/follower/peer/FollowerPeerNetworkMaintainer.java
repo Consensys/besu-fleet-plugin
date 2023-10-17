@@ -38,11 +38,12 @@ public class FollowerPeerNetworkMaintainer extends PeerNetworkMaintainer {
   private final AtomicBoolean isRunning = new AtomicBoolean();
   private final String leaderHttpHost;
   private final int leaderHttpPort;
-
   private final String followerHttpHost;
   private final int followerHttpPort;
   private final PeerNodesManager peerNodesManager;
   private final FleetAddFollowerClient fleetAddFollowerClient;
+
+  private boolean isConnected = false;
 
   public FollowerPeerNetworkMaintainer(
       final String leaderHttpHost,
@@ -78,13 +79,16 @@ public class FollowerPeerNetworkMaintainer extends PeerNetworkMaintainer {
                     LOG.error(
                         "Unable to establish a connection with the leader retry in 30 secondes");
                   } else {
-                    LOG.info(
-                        "Connection attempt with the leader was successful leader {}:{} for follower {}:{}",
-                        leaderHttpHost,
-                        leaderHttpPort,
-                        followerHttpHost,
-                        followerHttpPort);
+                    if (!isConnected) {
+                      LOG.info(
+                          "Connection attempt with the leader ({}:{}) was successful for follower ({}:{})",
+                          leaderHttpHost,
+                          leaderHttpPort,
+                          followerHttpHost,
+                          followerHttpPort);
+                    }
                   }
+                  isConnected = isSucceed;
                 });
           },
           0,
