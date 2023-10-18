@@ -23,6 +23,7 @@ Then, run the besu with leader mode:
 Or, run the besu with follower mode:
 ```
 /bin/besu --data-storage-format=BONSAI \
+--Xsnapsync-synchronizer-flat-db-healing-enabled=true \
 --plugin-fleet-node-role=FOLLOWER \
 --rpc-http-apis=FLEET,ETH \
 --rpc-http-enabled \
