@@ -169,13 +169,17 @@ public class FleetModeSynchronizer {
                       }
 
                       while (!persistedBlockHash.equals(targetBlockHash)) {
+                        LOG.info("Reorg detected so we clean the cache");
+                        blockContextProvider.clear();
                         LOG.debug("Paired Rollback {}", persistedBlockHash);
                         LOG.debug("Paired Rollforward {}", targetBlockHash);
+
                         rollForward.add(
                             getLeaderBlockContext(targetBlock.getBlockHeader().getNumber())
                                 .orElseThrow(MissingBlockException::new));
+                        final long targetBlockParent = targetBlock.getBlockHeader().getNumber() - 1;
                         targetBlock =
-                            getLeaderBlockContext(targetBlock.getBlockHeader().getNumber() - 1)
+                            getLeaderBlockContext(targetBlockParent)
                                 .orElseThrow(MissingBlockException::new);
 
                         rollBackward.add(
@@ -245,7 +249,12 @@ public class FleetModeSynchronizer {
                       final BlockContext newHead =
                           getLocalBlockContext(chainHead.getNumber()).orElseThrow();
 
-                      if (newHead.getBlockHeader().getNumber()
+                      if (oldHead
+                          .getBlockHeader()
+                          .getBlockHash()
+                          .equals(chainHead.getBlockHash())) {
+                        LOG.info("head not changed " + chainHead.getBlockHash());
+                      } else if (newHead.getBlockHeader().getNumber()
                               - oldHead.getBlockHeader().getNumber()
                           != 1) {
                         LOG.info(
@@ -255,6 +264,10 @@ public class FleetModeSynchronizer {
                       } else {
                         logImportedBlockInfo(newHead.getBlockHeader(), newHead.getBlockBody());
                       }
+
+                      // reset local cache
+                      blockContextProvider.clear();
+
                     } while (!chainHead.getBlockHash().equals(this.leaderHeader.getBlockHash()));
                   } catch (MissingBlockException e) {
                     syncDelay *= retryFactor;

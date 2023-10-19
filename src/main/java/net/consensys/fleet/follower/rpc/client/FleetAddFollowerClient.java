@@ -21,6 +21,8 @@ import net.consensys.fleet.common.rpc.model.PeerNode;
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.ext.web.client.HttpResponse;
 
 public class FleetAddFollowerClient extends AbstractStateRpcSender<PeerNode, Boolean> {
 
@@ -42,10 +44,19 @@ public class FleetAddFollowerClient extends AbstractStateRpcSender<PeerNode, Boo
       webClient
           .sendToLeader(ENDPOINT, getMethodeName(), data)
           .whenComplete(
-              (bufferHttpResponse, throwable) -> completableFuture.complete(throwable == null));
+              (bufferHttpResponse, throwable) -> {
+                completableFuture.complete(isConnected(bufferHttpResponse, throwable));
+              });
     } catch (JsonProcessingException e) {
       completableFuture.complete(false);
     }
     return completableFuture;
+  }
+
+  private boolean isConnected(final HttpResponse<Buffer> response, final Throwable throwable) {
+    if (throwable == null && response.statusCode() == 200) {
+      return !response.bodyAsJsonObject().containsKey("error");
+    }
+    return false;
   }
 }

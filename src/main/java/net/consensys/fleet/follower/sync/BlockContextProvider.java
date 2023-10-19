@@ -40,6 +40,9 @@ public class BlockContextProvider {
   private final Cache<CompositeBlockKey, Optional<FleetBlockContext>> leaderBlock =
       CacheBuilder.newBuilder().maximumSize(20).expireAfterAccess(1, TimeUnit.MINUTES).build();
 
+  private final Cache<CompositeBlockKey, Optional<FleetBlockContext>> localBlock =
+      CacheBuilder.newBuilder().maximumSize(20).expireAfterAccess(1, TimeUnit.MINUTES).build();
+
   private final PluginServiceProvider pluginServiceProvider;
   private final FleetGetBlockClient getBlockClient;
 
@@ -73,27 +76,41 @@ public class BlockContextProvider {
 
   public Optional<FleetBlockContext> getLocalBlockContextByNumber(
       final long number, final boolean fetchReceipts) {
-    final BlockchainService blockchainService =
-        pluginServiceProvider.getService(BlockchainService.class);
-    return blockchainService
-        .getBlockByNumber(number)
-        .map(
-            blockContext -> {
-              final List<TransactionReceipt> receiptsByBlockHash;
-              if (fetchReceipts) {
-                receiptsByBlockHash =
-                    blockchainService
-                        .getReceiptsByBlockHash(blockContext.getBlockHeader().getBlockHash())
-                        .orElse(Collections.emptyList());
-              } else {
-                receiptsByBlockHash = Collections.emptyList();
-              }
-              return new FleetBlockContext(
-                  blockContext.getBlockHeader(),
-                  blockContext.getBlockBody(),
-                  receiptsByBlockHash,
-                  Optional.empty());
-            });
+    try {
+      return localBlock.get(
+          new CompositeBlockKey(number),
+          () -> {
+            final BlockchainService blockchainService =
+                pluginServiceProvider.getService(BlockchainService.class);
+            return blockchainService
+                .getBlockByNumber(number)
+                .map(
+                    blockContext -> {
+                      final List<TransactionReceipt> receiptsByBlockHash;
+                      if (fetchReceipts) {
+                        receiptsByBlockHash =
+                            blockchainService
+                                .getReceiptsByBlockHash(
+                                    blockContext.getBlockHeader().getBlockHash())
+                                .orElse(Collections.emptyList());
+                      } else {
+                        receiptsByBlockHash = Collections.emptyList();
+                      }
+                      return new FleetBlockContext(
+                          blockContext.getBlockHeader(),
+                          blockContext.getBlockBody(),
+                          receiptsByBlockHash,
+                          Optional.empty());
+                    });
+          });
+    } catch (Exception e) {
+      return Optional.empty();
+    }
+  }
+
+  public void clear() {
+    leaderBlock.invalidateAll();
+    localBlock.invalidateAll();
   }
 
   public static class CompositeBlockKey {
