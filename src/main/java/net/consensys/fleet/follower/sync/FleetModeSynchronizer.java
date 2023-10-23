@@ -254,9 +254,10 @@ public class FleetModeSynchronizer {
                           .getBlockHash()
                           .equals(chainHead.getBlockHash())) {
                         LOG.info("head not changed " + chainHead.getBlockHash());
-                      } else if (newHead.getBlockHeader().getNumber()
-                              - oldHead.getBlockHeader().getNumber()
-                          != 1) {
+                      } else if (Math.abs(
+                              newHead.getBlockHeader().getNumber()
+                                  - oldHead.getBlockHeader().getNumber())
+                          <= 1) {
                         LOG.info(
                             "Fleet import progression: block {} ({}) reached.",
                             newHead.getBlockHeader().getNumber(),
