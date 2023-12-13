@@ -275,6 +275,8 @@ public class FleetModeSynchronizer {
                     startSync();
                     LOG.trace("There's missing block in the leader, retry after {} ms", syncDelay);
                   } catch (Exception e) {
+                    // reset local cache
+                    blockContextProvider.clear();
                     LOG.error("Error during sync because of : {}", e.getMessage());
                   }
                 }
