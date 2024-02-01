@@ -257,7 +257,7 @@ public class FleetModeSynchronizer {
                           .getBlockHeader()
                           .getBlockHash()
                           .equals(chainHead.getBlockHash())) {
-                        LOG.info("head not changed " + chainHead.getBlockHash());
+                        LOG.debug("head not changed " + chainHead.getBlockHash());
                       } else if (Math.abs(
                               newHead.getBlockHeader().getNumber()
                                   - oldHead.getBlockHeader().getNumber())
