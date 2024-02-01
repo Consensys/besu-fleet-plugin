@@ -28,7 +28,7 @@ public class FleetOptions {
   public static final String DEFAULT_FOLLOWER_PEER_HTTP_HOST = "127.0.0.1";
 
   public static final int DEFAULT_FOLLOWER_PEER_HTTP_PORT = 8545;
-  public static final int DEFAULT_FOLLOWER_MAX_BLOCK_PER_PERSIST = 500;
+  public static final int DEFAULT_FOLLOWER_MAX_BLOCK_PER_PERSIST = 50;
   public static final int DEFAULT_FOLLOWER_HEAD_DISTANCE_FOR_RECEIPT_FETCH = 2048;
 
   public static final String OPTION_LEADER_PEER_HTTP_HOST = "--plugin-fleet-leader-http-host";
@@ -85,7 +85,7 @@ public class FleetOptions {
   @CommandLine.Option(
       names = {OPTION_FOLLOWER_MAX_BLOCK_PER_PERSIST},
       hidden = true,
-      defaultValue = "500",
+      defaultValue = "50",
       paramLabel = "<INTEGER>",
       description = "Limit the number of blocks persisted in a single operation")
   Integer maxBlocksPerPersist = DEFAULT_FOLLOWER_MAX_BLOCK_PER_PERSIST;

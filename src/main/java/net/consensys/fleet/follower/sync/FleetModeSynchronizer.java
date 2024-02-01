@@ -201,7 +201,9 @@ public class FleetModeSynchronizer {
                         maybeTrieLog.ifPresent(
                             bytes ->
                                 trieLogProvider.saveRawTrieLogLayer(
-                                    blockContext.getBlockHeader().getBlockHash(), bytes));
+                                    blockContext.getBlockHeader().getBlockHash(),
+                                    blockContext.getBlockHeader().getNumber(),
+                                    bytes));
                         final boolean result =
                             synchronizationService.setHeadUnsafe(
                                 blockContext.getBlockHeader(), blockContext.getBlockBody());
@@ -224,7 +226,9 @@ public class FleetModeSynchronizer {
                         if (maybeTrieLog.isPresent()) {
                           // save trielog
                           trieLogProvider.saveRawTrieLogLayer(
-                              blockContext.getBlockHeader().getBlockHash(), maybeTrieLog.get());
+                              blockContext.getBlockHeader().getBlockHash(),
+                              blockContext.getBlockHeader().getNumber(),
+                              maybeTrieLog.get());
                           // save block
                           blockchainService.storeBlock(
                               blockContext.getBlockHeader(),
@@ -257,7 +261,7 @@ public class FleetModeSynchronizer {
                       } else if (Math.abs(
                               newHead.getBlockHeader().getNumber()
                                   - oldHead.getBlockHeader().getNumber())
-                          <= 1) {
+                          >= 1) {
                         LOG.info(
                             "Fleet import progression: block {} ({}) reached.",
                             newHead.getBlockHeader().getNumber(),
