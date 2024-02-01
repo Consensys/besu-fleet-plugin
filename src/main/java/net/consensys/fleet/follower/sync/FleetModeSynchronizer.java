@@ -261,7 +261,7 @@ public class FleetModeSynchronizer {
                       } else if (Math.abs(
                               newHead.getBlockHeader().getNumber()
                                   - oldHead.getBlockHeader().getNumber())
-                          >= 1) {
+                          <= 1) {
                         LOG.info(
                             "Fleet import progression: block {} ({}) reached.",
                             newHead.getBlockHeader().getNumber(),
