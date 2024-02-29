@@ -35,11 +35,6 @@ public class FleetAddFollowerServer implements PluginRpcMethod {
   }
 
   @Override
-  public String getNamespace() {
-    return "fleet";
-  }
-
-  @Override
   public String getName() {
     return "addFollowerNode";
   }

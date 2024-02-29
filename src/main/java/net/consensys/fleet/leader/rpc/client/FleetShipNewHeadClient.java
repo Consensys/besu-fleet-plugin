@@ -21,10 +21,13 @@ import net.consensys.fleet.common.rpc.model.NewHeadParams;
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FleetShipNewHeadClient extends AbstractStateRpcSender<NewHeadParams, Boolean> {
 
   private static final String METHOD_NAME = "fleet_shipNewHead";
+  private static final Logger LOG = LoggerFactory.getLogger(FleetShipNewHeadClient.class);
 
   public FleetShipNewHeadClient(final WebClientWrapper webClient) {
     super(webClient);
@@ -37,11 +40,13 @@ public class FleetShipNewHeadClient extends AbstractStateRpcSender<NewHeadParams
 
   @Override
   public CompletableFuture<Boolean> sendData(final NewHeadParams data) {
+    LOG.info("Sending new head to followers");
     final CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
     try {
       webClient.sendToFollowers(ENDPOINT, getMethodeName(), data);
       completableFuture.complete(true);
     } catch (JsonProcessingException e) {
+      LOG.error("Error sending new head to followers", e);
       completableFuture.complete(false);
     }
     return completableFuture;

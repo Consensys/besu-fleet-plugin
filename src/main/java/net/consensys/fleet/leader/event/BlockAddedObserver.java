@@ -22,11 +22,14 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.data.AddedBlockContext;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
 
   private final PluginServiceProvider pluginServiceProvider;
   private final FleetShipNewHeadClient stateShipNewHeadSender;
+  private static final Logger LOG = LoggerFactory.getLogger(BlockAddedObserver.class);
 
   public BlockAddedObserver(
       final PluginServiceProvider pluginServiceProvider,
@@ -37,6 +40,7 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
 
   @Override
   public void onBlockAdded(final AddedBlockContext addedBlockContext) {
+    LOG.info("New block added: {}", addedBlockContext.getBlockHeader().getBlockHash());
     if (pluginServiceProvider.isServiceAvailable(BlockchainService.class)) {
       final BlockchainService service = pluginServiceProvider.getService(BlockchainService.class);
       final Hash safeBlock =
@@ -45,6 +49,8 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
           service.getFinalizedBlock().orElse(addedBlockContext.getBlockHeader().getBlockHash());
       stateShipNewHeadSender.sendData(
           new NewHeadParams(addedBlockContext.getBlockHeader(), safeBlock, finalizedBlock));
+    } else {
+      LOG.error("BlockchainService is not available");
     }
   }
 }

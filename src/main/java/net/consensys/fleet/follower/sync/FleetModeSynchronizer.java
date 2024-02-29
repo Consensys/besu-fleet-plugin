@@ -115,7 +115,7 @@ public class FleetModeSynchronizer {
 
                   final TrieLogProvider trieLogProvider =
                       pluginServiceProvider.getService(TrieLogService.class).getTrieLogProvider();
-                  BlockHeader chainHead = blockchainService.getChainHead();
+                  BlockHeader chainHead = blockchainService.getChainHeadHeader();
                   try {
                     do {
 
@@ -249,7 +249,7 @@ public class FleetModeSynchronizer {
                       final BlockContext oldHead =
                           getLocalBlockContext(chainHead.getNumber()).orElseThrow();
                       // update chain head
-                      chainHead = blockchainService.getChainHead();
+                      chainHead = blockchainService.getChainHeadHeader();
                       final BlockContext newHead =
                           getLocalBlockContext(chainHead.getNumber()).orElseThrow();
 

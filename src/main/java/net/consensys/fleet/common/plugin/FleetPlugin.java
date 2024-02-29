@@ -20,6 +20,7 @@ import net.consensys.fleet.common.peer.PeerNetworkMaintainer;
 import net.consensys.fleet.common.peer.PeerNodesManager;
 import net.consensys.fleet.common.rpc.client.WebClientWrapper;
 import net.consensys.fleet.common.rpc.json.ConvertMapperProvider;
+import net.consensys.fleet.common.rpc.server.FleetGetConfigServer;
 import net.consensys.fleet.common.rpc.server.PluginRpcMethod;
 import net.consensys.fleet.common.trielog.FleetTrieLogService;
 import net.consensys.fleet.follower.event.InitialSyncCompletionObserver;
@@ -37,6 +38,8 @@ import net.consensys.fleet.leader.rpc.server.FleetGetBlockServer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.auto.service.AutoService;
 import org.hyperledger.besu.plugin.BesuContext;
@@ -66,6 +69,8 @@ public class FleetPlugin implements BesuPlugin {
   private WebClientWrapper webClient;
 
   private FleetModeSynchronizer fleetModeSynchronizer;
+  private final AtomicLong leaderBlockAddedObserverId = new AtomicLong(-1);
+  private final AtomicLong followerSyncCompletionListenerId = new AtomicLong(-1);
 
   // TODO Spit logic of besu plugin to leader besu plugin and follower besu plugin
   @Override
@@ -192,10 +197,41 @@ public class FleetPlugin implements BesuPlugin {
     peerNetworkMaintainer.start();
   }
 
+  @Override
+  public CompletableFuture<Void> reloadConfiguration() {
+
+    LOG.info("Reloading configuration");
+    LOG.info(FleetOptions.create().toString());
+
+    if (leaderBlockAddedObserverId.get() != -1) {
+      besuContext
+          .getService(BesuEvents.class)
+          .ifPresent(
+              besuEvents -> {
+                besuEvents.removeBlockAddedListener(leaderBlockAddedObserverId.get());
+                leaderBlockAddedObserverId.set(-1);
+              });
+    }
+    if (followerSyncCompletionListenerId.get() != -1) {
+      besuContext
+          .getService(BesuEvents.class)
+          .ifPresent(
+              besuEvents -> {
+                besuEvents.removeSyncStatusListener(followerSyncCompletionListenerId.get());
+                followerSyncCompletionListenerId.set(-1);
+              });
+    }
+    // reload clients methods
+    loadingClientsMethods();
+    LOG.info("Configuration reloaded");
+    return CompletableFuture.completedFuture(null);
+  }
+
   private List<PluginRpcMethod> createServerMethods() {
     final List<PluginRpcMethod> methods = new ArrayList<>();
     final BlockContextProvider blockContextProvider =
         new BlockContextProvider(pluginServiceProvider, new FleetGetBlockClient(webClient));
+    methods.add(new FleetGetConfigServer(convertMapperProvider));
     methods.add(new FleetAddFollowerServer(peerManagers));
     methods.add(new FleetGetBlockServer(convertMapperProvider, pluginServiceProvider));
     fleetModeSynchronizer =
@@ -217,26 +253,28 @@ public class FleetPlugin implements BesuPlugin {
     switch (CLI_OPTIONS.getNodeRole()) {
       case LEADER -> {
         /* ********** LEADER ************* */
-        LOG.debug("Adding blockchain observer");
+        LOG.info("Adding blockchain observer");
         final BlockAddedObserver blockAddedObserver =
             new BlockAddedObserver(pluginServiceProvider, new FleetShipNewHeadClient(webClient));
         besuContext
             .getService(BesuEvents.class)
             .ifPresentOrElse(
                 besuEvents -> {
-                  besuEvents.addBlockAddedListener(blockAddedObserver);
+                  leaderBlockAddedObserverId.set(
+                      besuEvents.addBlockAddedListener(blockAddedObserver));
                 },
                 () -> LOG.error("Could not obtain BesuEvents"));
       }
       case FOLLOWER -> {
         /* ********** FOLLOWER ************* */
-        LOG.debug("Adding sync status observer");
+        LOG.info("Adding sync status observer");
         besuContext
             .getService(BesuEvents.class)
             .ifPresentOrElse(
                 besuEvents -> {
-                  besuEvents.addInitialSyncCompletionListener(
-                      new InitialSyncCompletionObserver(() -> fleetModeSynchronizer));
+                  followerSyncCompletionListenerId.set(
+                      besuEvents.addInitialSyncCompletionListener(
+                          new InitialSyncCompletionObserver(() -> fleetModeSynchronizer)));
                 },
                 () -> LOG.error("Could not obtain BesuEvents"));
       }

@@ -32,7 +32,7 @@ dependencyManagement {
         dependency 'tech.pegasys.tools.epchecks:errorprone-checks:1.1.1'
 
         // Besu dependencies
-        dependency "org.hyperledger.besu:plugin-api:23.7.4-SNAPSHOT-KT"
+        dependency "org.hyperledger.besu:plugin-api:${besuVersion}"
         dependency "org.hyperledger.besu:besu-datatypes:${besuVersion}"
         dependency "org.hyperledger.besu.internal:pipeline:${besuVersion}"
         dependency "org.hyperledger.besu.internal:rlp:${besuVersion}"
