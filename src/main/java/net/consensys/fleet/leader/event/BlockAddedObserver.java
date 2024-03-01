@@ -40,7 +40,10 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
 
   @Override
   public void onBlockAdded(final AddedBlockContext addedBlockContext) {
-    LOG.info("New block added: {}", addedBlockContext.getBlockHeader().getBlockHash());
+    LOG.atDebug()
+        .setMessage("New block added: {}")
+        .addArgument(() -> addedBlockContext.getBlockHeader().getBlockHash())
+        .log();
     if (pluginServiceProvider.isServiceAvailable(BlockchainService.class)) {
       final BlockchainService service = pluginServiceProvider.getService(BlockchainService.class);
       final Hash safeBlock =
