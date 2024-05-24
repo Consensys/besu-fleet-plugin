@@ -14,16 +14,26 @@
  */
 package net.consensys.fleet.common.rpc.server;
 
+import net.consensys.fleet.common.config.FleetOptions;
+import net.consensys.fleet.common.rpc.json.ConvertMapperProvider;
+
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
-public interface PluginRpcMethod {
+public class FleetGetConfigServer implements PluginRpcMethod {
 
-  default String getNamespace() {
-    return "fleet";
+  private final ConvertMapperProvider convertMapperProvider;
+
+  public FleetGetConfigServer(final ConvertMapperProvider convertMapperProvider) {
+    this.convertMapperProvider = convertMapperProvider;
   }
-  ;
 
-  String getName();
+  @Override
+  public String getName() {
+    return "getConfig";
+  }
 
-  Object execute(PluginRpcRequest rpcRequest);
+  @Override
+  public Object execute(final PluginRpcRequest rpcRequest) {
+    return convertMapperProvider.getJsonConverter().valueToTree(FleetOptions.create());
+  }
 }

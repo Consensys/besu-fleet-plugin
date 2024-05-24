@@ -115,7 +115,7 @@ public class FleetModeSynchronizer {
 
                   final TrieLogProvider trieLogProvider =
                       pluginServiceProvider.getService(TrieLogService.class).getTrieLogProvider();
-                  BlockHeader chainHead = blockchainService.getChainHead();
+                  BlockHeader chainHead = blockchainService.getChainHeadHeader();
                   try {
                     do {
 
@@ -249,7 +249,7 @@ public class FleetModeSynchronizer {
                       final BlockContext oldHead =
                           getLocalBlockContext(chainHead.getNumber()).orElseThrow();
                       // update chain head
-                      chainHead = blockchainService.getChainHead();
+                      chainHead = blockchainService.getChainHeadHeader();
                       final BlockContext newHead =
                           getLocalBlockContext(chainHead.getNumber()).orElseThrow();
 
@@ -320,9 +320,9 @@ public class FleetModeSynchronizer {
       message.append(" / %d ws");
       messageArgs.add(body.getWithdrawals().get().size());
     }
-    if (body.getDeposits().isPresent()) {
+    if (body.getRequests().isPresent()) {
       message.append(" / %d ds");
-      messageArgs.add(body.getDeposits().get().size());
+      messageArgs.add(body.getRequests().get().size());
     }
     message.append(" / base fee %s / %,d (%01.1f%%) gas / (%s)");
     messageArgs.addAll(

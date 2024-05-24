@@ -53,11 +53,6 @@ public class FleetGetBlockServer implements PluginRpcMethod {
   }
 
   @Override
-  public String getNamespace() {
-    return "fleet";
-  }
-
-  @Override
   public String getName() {
     return "getBlock";
   }
