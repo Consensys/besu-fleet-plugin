@@ -18,6 +18,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import net.consensys.fleet.common.rpc.model.PeerNode;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -54,6 +55,6 @@ public class PeerNodesManager {
   }
 
   public List<PeerNode> getPeers() {
-    return peerNodesCache.asMap().values().stream().toList();
+    return new HashMap<>(peerNodesCache.asMap()).values().stream().toList();
   }
 }
