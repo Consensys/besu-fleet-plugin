@@ -1,10 +1,9 @@
-name: docker
+name: docker-build-fleet
 
 on:
   push:
     branches:
       - main
-      - docker
   workflow_dispatch:
     inputs:
       besu_version:
