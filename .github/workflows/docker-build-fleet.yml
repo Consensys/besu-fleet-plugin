@@ -1,11 +1,10 @@
-name: docker
+name: docker-build-fleet
 
 on:
   push:
     branches:
       - main
-      - docker
-  workflow_call:
+  workflow_dispatch:
     inputs:
       besu_version:
         description: 'the commit or version of besu to use'
