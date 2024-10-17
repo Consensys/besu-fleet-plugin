@@ -38,7 +38,8 @@ public class FleetOptions {
 
   public static final String OPTION_FOLLOWER_PEER_HTTP_HOST = "--plugin-fleet-follower-http-host";
   public static final String OPTION_FOLLOWER_PEER_HTTP_PORT = "--plugin-fleet-follower-http-port";
-  public static final String OPTION_FOLLOWER_HEARTBEAT_DELAY = "--plugin-fleet-heartbeat-delay";
+  public static final String OPTION_FOLLOWER_HEARTBEAT_DELAY =
+      "--plugin-fleet-follower-heartbeat-delay";
 
   public static final String OPTION_FOLLOWER_MAX_BLOCK_PER_PERSIST =
       "--plugin-fleet-max-block-per-persist";
