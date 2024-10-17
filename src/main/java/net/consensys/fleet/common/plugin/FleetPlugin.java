@@ -189,6 +189,7 @@ public class FleetPlugin implements BesuPlugin {
                 CLI_OPTIONS.getLeaderPeerHttpPort(),
                 CLI_OPTIONS.getFollowerPeerHttpHost(),
                 CLI_OPTIONS.getFollowerPeerHttpPort(),
+                CLI_OPTIONS.getFollowerHeartBeatDelay(),
                 peerManagers,
                 webClient);
       }
