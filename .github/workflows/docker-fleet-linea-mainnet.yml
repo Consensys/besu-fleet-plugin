@@ -1,0 +1,42 @@
+name: docker-package-fleet-linea
+
+on:
+  workflow_dispatch:
+    inputs:
+      linea_besu_version:
+        description: 'the release of line-besu to unarchive'
+        default: '24.10-delivery38'
+        required: false
+        type: string
+      fleet_plugin_version:
+        description: 'the version of the fleet plugin jar'
+        default: '0.2.3'
+        required: false
+        type: string
+      linea_sequencer_plugin_version:
+        description: 'the commit or version of linea_sequencer plugin jar'
+        default: '0.8.0-rc4.1'
+        required: false
+        type: string
+      finalized_tag_updater_plugin_version:
+        description: 'the commit or version of the fleet plugin jar'
+        default: '0.0.2'
+        required: false
+        type: string
+      besu_shomei_plugin_version:
+        description: 'the commit or version of the fleet plugin jar'
+        default: '0.3.1'
+        required: false
+        type: string
+
+jobs:
+  plugins:
+    runs-on: ubuntu-latest
+    
+    steps:
+
+      - name: Download an untar the linea-besu archive
+        run: |
+          cd /tmp/
+          wget "https://artifacts.consensys.net/public/linea-besu/raw/names/linea-besu.tar.gz/versions/${{ github.event.inputs.linea_besu_version }}/linea-besu-${{ github.event.inputs.linea_besu_version }}.tar.gz" 
+          ls -la /tmp
