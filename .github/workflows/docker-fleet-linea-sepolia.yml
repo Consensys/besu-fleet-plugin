@@ -1,4 +1,4 @@
-name: docker-build-fleet-sepolia
+name: docker-fleet-linea-mainnet
 
 on:
   push:
@@ -11,20 +11,34 @@ on:
         default: 'main'
         required: false
         type: string
-      fleet_version:
-        description: 'the commit or version of the fleet plugin to use'
-        default: 'main'
+      linea_besu_tar_gz:
+        description: 'the release of line-besu to unarchive'
+        default: '24.10-delivery38'
         required: false
         type: string
-      linea_sequencer_version:
-        description: 'the commit or version of linea_sequencer plugin to use'
-        default: 'main'
+      fleet_plugin_version:
+        description: 'the version of the fleet plugin jar'
+        default: '0.2.3'
         required: false
         type: string
-
+      linea_sequencer_plugin_version:
+        description: 'the version of linea_sequencer plugin jar'
+        default: '0.8.0-rc4.1'
+        required: false
+        type: string
+      finalized_tag_updater_plugin_version:
+        description: 'the version of the fleet plugin jar'
+        default: '0.0.2'
+        required: false
+        type: string
+      besu_shomei_plugin_version:
+        description: 'the version of the fleet plugin jar'
+        default: '0.3.1'
+        required: false
+        type: string
 
 jobs:
-  fleet:
+  plugins:
     runs-on: ubuntu-latest
     
     steps:
@@ -37,3 +51,6 @@ jobs:
           echo "downloading linea-besu: ${{ github.event.inputs.linea_sequencer_plugin_version }}"
           echo "downloading linea-besu: ${{ github.event.inputs.finalized_tag_updater_plugin_version }}"
           echo "downloading linea-besu: ${{ github.event.inputs.besu_shomei_plugin_version }}"
+
+          # wget "https://artifacts.consensys.net/public/linea-besu/raw/names/linea-besu.tar.gz/versions/${{ github.event.inputs.linea_besu_tar_gz }}/linea-besu-${{ github.event.inputs.linea_besu_tar_gz }}.tar.gz" 
+          ls -la /tmp

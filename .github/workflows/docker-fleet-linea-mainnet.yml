@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - gha-linea
   workflow_dispatch:
     inputs:
       besu_version:
