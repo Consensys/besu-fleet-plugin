@@ -1,0 +1,39 @@
+name: docker-build-fleet-sepolia
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      besu_version:
+        description: 'the commit or version of besu to use'
+        default: 'main'
+        required: false
+        type: string
+      fleet_version:
+        description: 'the commit or version of the fleet plugin to use'
+        default: 'main'
+        required: false
+        type: string
+      linea_sequencer_version:
+        description: 'the commit or version of linea_sequencer plugin to use'
+        default: 'main'
+        required: false
+        type: string
+
+
+jobs:
+  fleet:
+    runs-on: ubuntu-latest
+    
+    steps:
+
+      - name: Download and untar the linea-besu archive
+        run: |
+          cd /tmp/
+          echo 'downloading linea-besu: ${{ github.event.inputs.linea_besu_tar_gz }}'
+          echo downloading linea-besu: ${{ github.event.inputs.besu_version }}
+          echo "downloading linea-besu: ${{ github.event.inputs.linea_sequencer_plugin_version }}"
+          echo "downloading linea-besu: ${{ github.event.inputs.finalized_tag_updater_plugin_version }}"
+          echo "downloading linea-besu: ${{ github.event.inputs.besu_shomei_plugin_version }}"
