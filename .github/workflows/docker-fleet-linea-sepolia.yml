@@ -104,7 +104,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         env:
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: sepolia-${{ github.sha }}
         with:
           context: docker/.
           platforms: linux/amd64
@@ -113,5 +113,5 @@ jobs:
             BUILD_DATE=${{ env.BUILD_DATE }}
           push: true
           tags: |
-            consensys/besu-linea-fleet:${{ env.IMAGE_TAG }}
+            consensys/besu-linea-fleet:sepolia-${{ github.sha }}
   
