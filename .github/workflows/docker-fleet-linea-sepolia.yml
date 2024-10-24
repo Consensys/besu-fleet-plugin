@@ -1,16 +1,12 @@
-name: docker-fleet-linea-mainnet
+name: docker-fleet-linea-sepolia
 
 on:
   push:
     branches:
       - main
+      - gha
   workflow_dispatch:
     inputs:
-      besu_version:
-        description: 'the commit or version of besu to use'
-        default: 'main'
-        required: false
-        type: string
       linea_besu_tar_gz:
         description: 'the release of line-besu to unarchive'
         default: '24.10-delivery38'
@@ -23,7 +19,7 @@ on:
         type: string
       linea_sequencer_plugin_version:
         description: 'the version of linea_sequencer plugin jar'
-        default: '0.8.0-rc4.1'
+        default: '0.1.4-test35'
         required: false
         type: string
       finalized_tag_updater_plugin_version:
@@ -37,20 +33,85 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
 jobs:
-  plugins:
+  build:
     runs-on: ubuntu-latest
+    environment: dev
     
     steps:
 
-      - name: Download and untar the linea-besu archive
+      - name: checkout the docker file
+        uses: actions/checkout@v4
+
+      - name: download and untar the linea-besu archive
         run: |
           cd /tmp/
-          echo 'downloading linea-besu: ${{ github.event.inputs.linea_besu_tar_gz }}'
-          echo downloading linea-besu: ${{ github.event.inputs.besu_version }}
-          echo "downloading linea-besu: ${{ github.event.inputs.linea_sequencer_plugin_version }}"
-          echo "downloading linea-besu: ${{ github.event.inputs.finalized_tag_updater_plugin_version }}"
-          echo "downloading linea-besu: ${{ github.event.inputs.besu_shomei_plugin_version }}"
+          echo "downloading linea-besu: ${{ github.event.inputs.linea_besu_tar_gz }}"
+          wget -nv "https://artifacts.consensys.net/public/linea-besu/raw/names/linea-besu.tar.gz/versions/${{ github.event.inputs.linea_besu_tar_gz }}/linea-besu-${{ github.event.inputs.linea_besu_tar_gz }}.tar.gz"
+          tar -xvf linea-besu-${{ github.event.inputs.linea_besu_tar_gz }}.tar.gz
+          mv /tmp/linea-besu-${{ github.event.inputs.linea_besu_tar_gz }} /tmp/besu
 
-          # wget "https://artifacts.consensys.net/public/linea-besu/raw/names/linea-besu.tar.gz/versions/${{ github.event.inputs.linea_besu_tar_gz }}/linea-besu-${{ github.event.inputs.linea_besu_tar_gz }}.tar.gz" 
-          ls -la /tmp
+      - name: make a list of the versions used in the container
+        run: |
+          echo -ne "linea-besu: ${{ github.event.inputs.linea_besu_tar_gz }}" > /tmp/besu/versions.txt
+          echo -ne "fleet_plugin_version: ${{ github.event.inputs.fleet_plugin_version }}" >> /tmp/besu/versions.txt
+          echo -ne "linea_sequencer_plugin_version: ${{ github.event.inputs.linea_sequencer_plugin_version }}" >> /tmp/besu/versions.txt
+          echo -ne "finalized_tag_updater_plugin_version: ${{ github.event.inputs.finalized_tag_updater_plugin_version }}" >> /tmp/besu/versions.txt
+          echo -ne "besu_shomei_plugin_version: ${{ github.event.inputs.besu_shomei_plugin_version }}" >> /tmp/besu/versions.txt
+          mkdir -p /tmp/besu/plugins
+
+      - name: get the plugins
+        run: |
+          cd /tmp/besu/plugins
+
+          echo "getting linea_sequencer_plugin_version: ${{ github.event.inputs.linea_sequencer_plugin_version }}" 
+          wget -nv "https://github.com/Consensys/linea-sequencer/releases/download/v${{ github.event.inputs.linea_sequencer_plugin_version }}/besu-sequencer-plugins-v${{ github.event.inputs.linea_sequencer_plugin_version }}.jar" -P /tmp/besu/plugins
+
+          echo "getting finalized_tag_updater_plugin_version: ${{ github.event.inputs.finalized_tag_updater_plugin_version }}" 
+          wget -nv "https://github.com/Consensys/linea-monorepo/releases/download/finalized-tag-updater-v${{ github.event.inputs.finalized_tag_updater_plugin_version }}/finalized-tag-updater-v${{ github.event.inputs.finalized_tag_updater_plugin_version }}.jar" -P /tmp/besu/plugins
+
+          echo "getting besu_shomei_plugin_version: ${{ github.event.inputs.besu_shomei_plugin_version }}" 
+          wget -nv "https://github.com/Consensys/besu-shomei-plugin/releases/download/v${{ github.event.inputs.besu_shomei_plugin_version }}/besu-shomei-plugin-v${{ github.event.inputs.besu_shomei_plugin_version }}.jar" -P /tmp/besu/plugins
+
+      - name: get plugins from private repos
+        uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          repo: 'Consensys/besu-fleet-plugin'
+          version: 'tags/${{ github.event.inputs.fleet_plugin_version }}'
+          target: '/tmp/besu/plugins/besu-fleet-plugin-${{ github.event.inputs.fleet_plugin_version }}.jar'
+          file: 'besu-fleet-plugin-${{ github.event.inputs.fleet_plugin_version }}.jar'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: piece the package in the right place 
+        run: |
+          cd docker
+          mv /tmp/besu ./
+          ls -la ./
+
+      - name: login to docker
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER_RW }}
+          password: ${{ secrets.DOCKER_PASSWORD_RW }}
+
+      - name: set docker build args
+        run: |
+          echo "BUILD_DATE=$(date --rfc-3339=date)" >> ${GITHUB_ENV}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        with:
+          context: docker/.
+          platforms: linux/amd64
+          build-args: |
+            VCS_REF=${{ github.sha }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
+          push: true
+          tags: |
+            consensys/besu-linea-fleet:${{ env.IMAGE_TAG }}
+  
