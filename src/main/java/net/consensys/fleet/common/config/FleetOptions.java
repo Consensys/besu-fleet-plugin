@@ -139,8 +139,8 @@ public class FleetOptions {
         .add("nodeRole", nodeRole)
         .add("leaderPeerHttpHost", leaderPeerHttpHost)
         .add("leaderPeerHttpPort", leaderPeerHttpPort)
-        .add("leaderPeerHttpHost", followerPeerHttpHost)
-        .add("leaderPeerHttpPort", followerPeerHttpPort)
+        .add("followerPeerHttpHost", followerPeerHttpHost)
+        .add("followerPeerHttpPort", followerPeerHttpPort)
         .add("persistRangeSize", maxBlocksPerPersist)
         .add("headDistanceForReceiptFetch", headDistanceForReceiptFetch)
         .toString();
