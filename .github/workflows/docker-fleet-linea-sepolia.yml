@@ -19,17 +19,12 @@ on:
         type: string
       linea_sequencer_plugin_version:
         description: 'the version of linea_sequencer plugin jar'
-        default: '0.1.4-test35'
+        default: '0.8.0-rc4.1'
         required: false
         type: string
       finalized_tag_updater_plugin_version:
-        description: 'the version of the fleet plugin jar'
+        description: 'the version of the finalized tag plugin jar'
         default: '0.0.2'
-        required: false
-        type: string
-      besu_shomei_plugin_version:
-        description: 'the version of the fleet plugin jar'
-        default: '0.3.1'
         required: false
         type: string
 
@@ -56,11 +51,10 @@ jobs:
 
       - name: make a list of the versions used in the container
         run: |
-          echo -ne "linea-besu: ${{ github.event.inputs.linea_besu_tar_gz }}" > /tmp/besu/versions.txt
-          echo -ne "fleet_plugin_version: ${{ github.event.inputs.fleet_plugin_version }}" >> /tmp/besu/versions.txt
-          echo -ne "linea_sequencer_plugin_version: ${{ github.event.inputs.linea_sequencer_plugin_version }}" >> /tmp/besu/versions.txt
-          echo -ne "finalized_tag_updater_plugin_version: ${{ github.event.inputs.finalized_tag_updater_plugin_version }}" >> /tmp/besu/versions.txt
-          echo -ne "besu_shomei_plugin_version: ${{ github.event.inputs.besu_shomei_plugin_version }}" >> /tmp/besu/versions.txt
+          echo "linea-besu: ${{ github.event.inputs.linea_besu_tar_gz }}" > /tmp/besu/versions.txt
+          echo "fleet_plugin_version: ${{ github.event.inputs.fleet_plugin_version }}" >> /tmp/besu/versions.txt
+          echo "linea_sequencer_plugin_version: ${{ github.event.inputs.linea_sequencer_plugin_version }}" >> /tmp/besu/versions.txt
+          echo "finalized_tag_updater_plugin_version: ${{ github.event.inputs.finalized_tag_updater_plugin_version }}" >> /tmp/besu/versions.txt
           mkdir -p /tmp/besu/plugins
 
       - name: get the plugins
@@ -68,13 +62,10 @@ jobs:
           cd /tmp/besu/plugins
 
           echo "getting linea_sequencer_plugin_version: ${{ github.event.inputs.linea_sequencer_plugin_version }}" 
-          wget -nv "https://github.com/Consensys/linea-sequencer/releases/download/v${{ github.event.inputs.linea_sequencer_plugin_version }}/besu-sequencer-plugins-v${{ github.event.inputs.linea_sequencer_plugin_version }}.jar" -P /tmp/besu/plugins
+          wget -nv "https://github.com/Consensys/linea-sequencer/releases/download/v${{ github.event.inputs.linea_sequencer_plugin_version }}/linea-sequencer-v${{ github.event.inputs.linea_sequencer_plugin_version }}.jar" -P /tmp/besu/plugins
 
           echo "getting finalized_tag_updater_plugin_version: ${{ github.event.inputs.finalized_tag_updater_plugin_version }}" 
           wget -nv "https://github.com/Consensys/linea-monorepo/releases/download/finalized-tag-updater-v${{ github.event.inputs.finalized_tag_updater_plugin_version }}/finalized-tag-updater-v${{ github.event.inputs.finalized_tag_updater_plugin_version }}.jar" -P /tmp/besu/plugins
-
-          echo "getting besu_shomei_plugin_version: ${{ github.event.inputs.besu_shomei_plugin_version }}" 
-          wget -nv "https://github.com/Consensys/besu-shomei-plugin/releases/download/v${{ github.event.inputs.besu_shomei_plugin_version }}/besu-shomei-plugin-v${{ github.event.inputs.besu_shomei_plugin_version }}.jar" -P /tmp/besu/plugins
 
       - name: get plugins from private repos
         uses: dsaltares/fetch-gh-release-asset@master
