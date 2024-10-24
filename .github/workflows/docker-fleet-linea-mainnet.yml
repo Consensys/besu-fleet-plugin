@@ -27,11 +27,6 @@ on:
         default: '0.0.2'
         required: false
         type: string
-      besu_shomei_plugin_version:
-        description: 'the version of the fleet plugin jar'
-        default: '0.3.1'
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -72,9 +67,6 @@ jobs:
 
           echo "getting finalized_tag_updater_plugin_version: ${{ github.event.inputs.finalized_tag_updater_plugin_version }}" 
           wget -nv "https://github.com/Consensys/linea-monorepo/releases/download/finalized-tag-updater-v${{ github.event.inputs.finalized_tag_updater_plugin_version }}/finalized-tag-updater-v${{ github.event.inputs.finalized_tag_updater_plugin_version }}.jar" -P /tmp/besu/plugins
-
-          echo "getting besu_shomei_plugin_version: ${{ github.event.inputs.besu_shomei_plugin_version }}" 
-          wget -nv "https://github.com/Consensys/besu-shomei-plugin/releases/download/v${{ github.event.inputs.besu_shomei_plugin_version }}/besu-shomei-plugin-v${{ github.event.inputs.besu_shomei_plugin_version }}.jar" -P /tmp/besu/plugins
 
       - name: get plugins from private repos
         uses: dsaltares/fetch-gh-release-asset@master
