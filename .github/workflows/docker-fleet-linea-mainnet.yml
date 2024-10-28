@@ -41,6 +41,9 @@ jobs:
       - name: checkout the docker file
         uses: actions/checkout@v4
 
+      - name: set up docker buildx
+        uses: docker/setup-buildx-action@v3        
+
       - name: download and untar the linea-besu archive
         run: |
           cd /tmp/
@@ -98,7 +101,7 @@ jobs:
           IMAGE_TAG: mainnet-${{ github.sha }}
         with:
           context: docker/.
-          platforms: linux/amd64
+          platforms: linux/arm64,linux/amd64
           build-args: |
             VCS_REF=${{ github.sha }}
             BUILD_DATE=${{ env.BUILD_DATE }}
