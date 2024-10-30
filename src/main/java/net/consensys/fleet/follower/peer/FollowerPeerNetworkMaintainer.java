@@ -40,6 +40,7 @@ public class FollowerPeerNetworkMaintainer extends PeerNetworkMaintainer {
   private final int leaderHttpPort;
   private final String followerHttpHost;
   private final int followerHttpPort;
+  private final long heartBeatDelay;
   private final PeerNodesManager peerNodesManager;
   private final FleetAddFollowerClient fleetAddFollowerClient;
 
@@ -50,12 +51,14 @@ public class FollowerPeerNetworkMaintainer extends PeerNetworkMaintainer {
       final int leaderHttpPort,
       final String followerHttpHost,
       final int followerHttpPort,
+      final long heartBeatDelay,
       final PeerNodesManager peerNodesManager,
       final WebClientWrapper webClient) {
     this.leaderHttpHost = leaderHttpHost;
     this.leaderHttpPort = leaderHttpPort;
     this.followerHttpHost = followerHttpHost;
     this.followerHttpPort = followerHttpPort;
+    this.heartBeatDelay = heartBeatDelay;
     this.peerNodesManager = peerNodesManager;
     fleetAddFollowerClient = new FleetAddFollowerClient(webClient);
   }
@@ -81,18 +84,19 @@ public class FollowerPeerNetworkMaintainer extends PeerNetworkMaintainer {
                   } else {
                     if (!isConnected) {
                       LOG.info(
-                          "Connection attempt with the leader ({}:{}) was successful for follower ({}:{})",
+                          "Connection attempt with the leader ({}:{}) was successful for follower ({}:{} next ping in {} seconds)",
                           leaderHttpHost,
                           leaderHttpPort,
                           followerHttpHost,
-                          followerHttpPort);
+                          followerHttpPort,
+                          heartBeatDelay);
                     }
                   }
                   isConnected = isSucceed;
                 });
           },
           0,
-          30,
+          heartBeatDelay,
           TimeUnit.SECONDS);
     }
   }

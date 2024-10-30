@@ -30,6 +30,7 @@ public class FleetOptions {
   public static final int DEFAULT_FOLLOWER_PEER_HTTP_PORT = 8545;
   public static final int DEFAULT_FOLLOWER_MAX_BLOCK_PER_PERSIST = 50;
   public static final int DEFAULT_FOLLOWER_HEAD_DISTANCE_FOR_RECEIPT_FETCH = 2048;
+  public static final int DEFAULT_FOLLOWER_HEARTBEAT_DELAY = 30;
 
   public static final String OPTION_LEADER_PEER_HTTP_HOST = "--plugin-fleet-leader-http-host";
 
@@ -37,6 +38,8 @@ public class FleetOptions {
 
   public static final String OPTION_FOLLOWER_PEER_HTTP_HOST = "--plugin-fleet-follower-http-host";
   public static final String OPTION_FOLLOWER_PEER_HTTP_PORT = "--plugin-fleet-follower-http-port";
+  public static final String OPTION_FOLLOWER_HEARTBEAT_DELAY =
+      "--plugin-fleet-follower-heartbeat-delay";
 
   public static final String OPTION_FOLLOWER_MAX_BLOCK_PER_PERSIST =
       "--plugin-fleet-max-block-per-persist";
@@ -83,6 +86,14 @@ public class FleetOptions {
   Integer followerPeerHttpPort = DEFAULT_FOLLOWER_PEER_HTTP_PORT;
 
   @CommandLine.Option(
+      names = {OPTION_FOLLOWER_HEARTBEAT_DELAY},
+      hidden = true,
+      defaultValue = "30",
+      paramLabel = "<INTEGER>",
+      description = "Number of seconds between two pings from the followers pinging the leader")
+  Integer followerHeartBeatDelay = DEFAULT_FOLLOWER_HEARTBEAT_DELAY;
+
+  @CommandLine.Option(
       names = {OPTION_FOLLOWER_MAX_BLOCK_PER_PERSIST},
       hidden = true,
       defaultValue = "50",
@@ -125,6 +136,10 @@ public class FleetOptions {
     return followerPeerHttpPort;
   }
 
+  public Integer getFollowerHeartBeatDelay() {
+    return followerHeartBeatDelay;
+  }
+
   public Integer getMaxBlocksPerPersist() {
     return maxBlocksPerPersist;
   }
@@ -139,8 +154,9 @@ public class FleetOptions {
         .add("nodeRole", nodeRole)
         .add("leaderPeerHttpHost", leaderPeerHttpHost)
         .add("leaderPeerHttpPort", leaderPeerHttpPort)
-        .add("leaderPeerHttpHost", followerPeerHttpHost)
-        .add("leaderPeerHttpPort", followerPeerHttpPort)
+        .add("followerPeerHttpHost", followerPeerHttpHost)
+        .add("followerPeerHttpPort", followerPeerHttpPort)
+        .add("followerHeartBeatDelay", followerHeartBeatDelay)
         .add("persistRangeSize", maxBlocksPerPersist)
         .add("headDistanceForReceiptFetch", headDistanceForReceiptFetch)
         .toString();
