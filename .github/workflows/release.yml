@@ -7,11 +7,12 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    environment: publish
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4.2.1
         with:
@@ -57,3 +58,19 @@ jobs:
           asset_path: ./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar
           asset_name: besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar
           asset_content_type: application/octet-stream
+
+      - name: Authneticate JFrog
+        id: jfrog
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: "https://consensys.jfrog.io"
+        with:
+          oidc-provider-name: 'github'
+          oidc-audience: ''
+
+      - name: Publish Artifactory
+        id: artifactory
+        run: ./gradlew artifactoryPublish -PreleaseVersion=${{ steps.get_version.outputs.VERSION }}
+        env:
+          ARTIFACTORY_USER: ${{ steps.jfrog.outputs.oidc-user }}
+          ARTIFACTORY_PASSWORD: ${{ steps.jfrog.outputs.oidc-token }}
