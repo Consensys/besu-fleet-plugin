@@ -320,10 +320,6 @@ public class FleetModeSynchronizer {
       message.append(" / %d ws");
       messageArgs.add(body.getWithdrawals().get().size());
     }
-    if (body.getRequests().isPresent()) {
-      message.append(" / %d ds");
-      messageArgs.add(body.getRequests().get().size());
-    }
     message.append(" / base fee %s / %,d (%01.1f%%) gas / (%s)");
     messageArgs.addAll(
         List.of(
