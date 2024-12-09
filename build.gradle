@@ -39,6 +39,8 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '8.1.1'
     id 'java'
     id 'java-library'
+    id 'com.jfrog.artifactory' version '5.2.5'
+    id 'maven-publish'
 }
 
 
@@ -48,6 +50,11 @@ apply plugin: 'net.ltgt.errorprone'
 apply plugin: 'jacoco'
 apply from: "${rootDir}/gradle/versions.gradle"
 apply from: "${rootDir}/gradle/check-licenses.gradle"
+
+def artifactoryUser = project.hasProperty('artifactoryUser') ? project.property('artifactoryUser') : System.getenv('ARTIFACTORY_USER')
+def artifactoryPassword  = project.hasProperty('artifactoryPassword') ? project.property('artifactoryPassword') : System.getenv('ARTIFACTORY_PASSWORD')
+def artifactoryRepo = System.getenv('ARTIFACTORY_REPO') ? System.getenv('ARTIFACTORY_REPO') : 'maven-local'
+def artifactoryOrg = System.getenv('ARTIFACTORY_ORG') ? System.getenv('ARTIFACTORY_ORG') : 'consensys'
 
 group = 'net.consensys.fleet.besu.plugin'
 //version = '0.1.0'
@@ -72,6 +79,9 @@ repositories {
     maven {
         url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
         content { includeGroupByRegex('org\\.hyperledger\\.besu($|\\..*)') }
+    }
+    maven {
+        url "https://${artifactoryOrg}.jfrog.io/artifactory/${artifactoryRepo}/"
     }
 }
 
@@ -260,5 +270,41 @@ def getCheckedOutGitCommitHash(length = 8) {
         logger.warn('Could not calculate git commit, using "xxxxxxxx" (run with --info for stacktrace)')
         logger.info('Error retrieving git commit', e)
         return "xxxxxxxx"
+    }
+}
+
+artifactory {
+    publish {
+        contextUrl = "https://${artifactoryOrg}.jfrog.io/artifactory"
+        repository {
+            repoKey = "${artifactoryRepo}"
+            username = "${artifactoryUser}"
+            password = "${artifactoryPassword}"
+        }
+
+        defaults {
+            publications('mavenJava')
+            publishArtifacts = true
+            publishPom = true
+        }
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+
+            // Following configuration needed as without this artifactoryPublish fails due to dependency versions not available
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+                usage('java-runtime') {
+                    fromResolutionResult()
+                }
+            }
+        }
     }
 }
