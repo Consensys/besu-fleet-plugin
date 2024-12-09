@@ -24,6 +24,13 @@ buildscript {
             content { includeGroupByRegex('tech\\.pegasys\\..*')}
         }
     }
+    ext {
+        besuIdentifier = "linea-besu-${besuVersion}"
+        besuFilename = "${besuIdentifier}.tar.gz"
+        besuUrl = "${distributionBaseUrl}${besuVersion}/${besuFilename}"
+        besuPluginsIdentifier = "${distributionIdentifier}-${version}"
+        besuPluginDir = File.createTempDir("plugins")
+    }
     dependencies {
         classpath 'tech.pegasys.internal.license.reporter:license-reporter:1.1.1'
     }
@@ -66,8 +73,16 @@ targetCompatibility = JavaVersion.VERSION_21
 defaultTasks 'build', 'checkLicenses', 'javadoc', 'plugin'
 
 repositories {
-    mavenLocal()
-    mavenCentral()
+    maven {
+        url "https://artifacts.consensys.net/public/linea-besu/maven/"
+        content {
+            includeGroupByRegex('io\\.consensys\\..*')
+        }
+    }
+    maven {
+        url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
+        content { includeGroupByRegex('org\\.hyperledger\\..*') }
+    }
     maven {
         url "https://artifacts.consensys.net/public/maven/maven/"
         content { includeGroupByRegex('tech\\.pegasys($|\\..*)') }
@@ -77,12 +92,10 @@ repositories {
         content { includeGroupByRegex('io\\.libp2p($|\\..*)') }
     }
     maven {
-        url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
-        content { includeGroupByRegex('org\\.hyperledger\\.besu($|\\..*)') }
-    }
-    maven {
         url "https://${artifactoryOrg}.jfrog.io/artifactory/${artifactoryRepo}/"
     }
+    mavenCentral()
+    mavenLocal()
 }
 
 apply plugin: 'com.diffplug.spotless'
@@ -184,13 +197,13 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
     implementation 'org.apache.logging.log4j:log4j-core'
 
+    implementation "${besuArtifactGroup}:besu-datatypes"
+    implementation "${besuArtifactGroup}:plugin-api"
 
-    implementation 'org.hyperledger.besu.internal:pipeline'
-    implementation 'org.hyperledger.besu.internal:rlp'
-    implementation 'org.hyperledger.besu:plugin-api'
-    implementation 'org.hyperledger.besu:besu-datatypes'
+    implementation "${besuArtifactGroup}.internal:pipeline"
+    implementation "${besuArtifactGroup}.internal:rlp"
+
     implementation 'info.picocli:picocli'
-
 
     implementation 'io.vertx:vertx-web-client'
     implementation 'io.vertx:vertx-web'

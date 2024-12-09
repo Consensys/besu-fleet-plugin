@@ -32,11 +32,17 @@ dependencyManagement {
         dependency 'tech.pegasys.tools.epchecks:errorprone-checks:1.1.1'
 
         // Besu dependencies
-        dependency "org.hyperledger.besu:plugin-api:${besuVersion}"
-        dependency "org.hyperledger.besu:besu-datatypes:${besuVersion}"
-        dependency "org.hyperledger.besu.internal:pipeline:${besuVersion}"
-        dependency "org.hyperledger.besu.internal:rlp:${besuVersion}"
+        dependencySet(group: "${besuArtifactGroup}", version: "${besuVersion}") {
+            entry "besu-datatypes"
+            entry "evm"
+            entry "plugin-api"
+        }
 
+        // Besu internal dependencies
+        dependencySet(group: "${besuArtifactGroup}.internal", version: "${besuVersion}") {
+            entry "pipeline"
+            entry "rlp"
+        }
 
         // Logging dependencies
         dependencySet(group: 'org.apache.logging.log4j', version: '2.22.1') {
