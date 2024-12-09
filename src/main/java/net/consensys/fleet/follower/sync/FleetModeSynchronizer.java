@@ -83,7 +83,7 @@ public class FleetModeSynchronizer {
       synchronizationService.fireNewUnverifiedForkchoiceEvent(
           head.getBlockHash(), safeBlock, finalizedBlock);
       LOG.debug(
-          "fire fork choice for safe block {} an finalized block {} ", safeBlock, finalizedBlock);
+          "fire fork choice for safe block {} and finalized block {} ", safeBlock, finalizedBlock);
 
       if (isWaitingForSync.get()) {
         LOG.debug("Waiting for the end of the initial synchronization phase");
