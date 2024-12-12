@@ -42,8 +42,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.auto.service.AutoService;
-import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
@@ -61,7 +61,7 @@ public class FleetPlugin implements BesuPlugin {
   private static final Logger LOG = LoggerFactory.getLogger(FleetPlugin.class);
   private static final String NAME = "fleet";
   private static final FleetOptions CLI_OPTIONS = FleetOptions.create();
-  private BesuContext besuContext;
+  private ServiceManager serviceManager;
   private PluginServiceProvider pluginServiceProvider;
 
   private PeerNodesManager peerManagers;
@@ -74,14 +74,14 @@ public class FleetPlugin implements BesuPlugin {
 
   // TODO Spit logic of besu plugin to leader besu plugin and follower besu plugin
   @Override
-  public void register(final BesuContext besuContext) {
+  public void register(final ServiceManager serviceManager) {
     LOG.info("Registering Fleet plugin");
-    this.besuContext = besuContext;
+    this.serviceManager = serviceManager;
     this.pluginServiceProvider = new PluginServiceProvider();
     this.convertMapperProvider = new ConvertMapperProvider(pluginServiceProvider);
 
     LOG.info("Adding command line params");
-    final Optional<PicoCLIOptions> cmdlineOptions = besuContext.getService(PicoCLIOptions.class);
+    final Optional<PicoCLIOptions> cmdlineOptions = serviceManager.getService(PicoCLIOptions.class);
 
     if (cmdlineOptions.isEmpty()) {
       throw new IllegalStateException(
@@ -95,7 +95,7 @@ public class FleetPlugin implements BesuPlugin {
 
     LOG.debug("Setting up RPC endpoints");
     final List<PluginRpcMethod> pluginRpcMethods = createServerMethods();
-    besuContext
+    serviceManager
         .getService(RpcEndpointService.class)
         .ifPresent(
             rpcEndpointService ->
@@ -111,7 +111,7 @@ public class FleetPlugin implements BesuPlugin {
 
     LOG.debug("Register trieLog service");
     final TrieLogService trieLogService = new FleetTrieLogService();
-    besuContext.addService(TrieLogService.class, trieLogService);
+    serviceManager.addService(TrieLogService.class, trieLogService);
     pluginServiceProvider.provideService(TrieLogService.class, () -> trieLogService);
   }
 
@@ -120,7 +120,7 @@ public class FleetPlugin implements BesuPlugin {
 
     LOG.debug("Loading rlp converter service");
     final RlpConverterService rlpConverterService =
-        besuContext
+        serviceManager
             .getService(RlpConverterService.class)
             .orElseThrow(
                 () ->
@@ -130,7 +130,7 @@ public class FleetPlugin implements BesuPlugin {
 
     LOG.debug("Loading blockchain service");
     final BlockchainService blockchainService =
-        besuContext
+        serviceManager
             .getService(BlockchainService.class)
             .orElseThrow(
                 () -> new IllegalStateException("Expecting a blockchain service, but none found."));
@@ -138,7 +138,7 @@ public class FleetPlugin implements BesuPlugin {
 
     LOG.debug("Loading synchronization service and configuration");
     final SynchronizationService synchronizationService =
-        besuContext
+        serviceManager
             .getService(SynchronizationService.class)
             .orElseThrow(
                 () -> new IllegalStateException("Expecting a sync service, but none found."));
@@ -147,7 +147,7 @@ public class FleetPlugin implements BesuPlugin {
 
     LOG.debug("Loading P2P network service");
     final P2PService p2PService =
-        besuContext
+        serviceManager
             .getService(P2PService.class)
             .orElseThrow(
                 () ->
@@ -205,7 +205,7 @@ public class FleetPlugin implements BesuPlugin {
     LOG.info(FleetOptions.create().toString());
 
     if (leaderBlockAddedObserverId.get() != -1) {
-      besuContext
+      serviceManager
           .getService(BesuEvents.class)
           .ifPresent(
               besuEvents -> {
@@ -214,7 +214,7 @@ public class FleetPlugin implements BesuPlugin {
               });
     }
     if (followerSyncCompletionListenerId.get() != -1) {
-      besuContext
+      serviceManager
           .getService(BesuEvents.class)
           .ifPresent(
               besuEvents -> {
@@ -257,7 +257,7 @@ public class FleetPlugin implements BesuPlugin {
         LOG.info("Adding blockchain observer");
         final BlockAddedObserver blockAddedObserver =
             new BlockAddedObserver(pluginServiceProvider, new FleetShipNewHeadClient(webClient));
-        besuContext
+        serviceManager
             .getService(BesuEvents.class)
             .ifPresentOrElse(
                 besuEvents -> {
@@ -269,7 +269,7 @@ public class FleetPlugin implements BesuPlugin {
       case FOLLOWER -> {
         /* ********** FOLLOWER ************* */
         LOG.info("Adding sync status observer");
-        besuContext
+        serviceManager
             .getService(BesuEvents.class)
             .ifPresentOrElse(
                 besuEvents -> {
@@ -293,7 +293,7 @@ public class FleetPlugin implements BesuPlugin {
 
   private void disableTransactionPool() {
     LOG.debug("Disable transaction pool");
-    besuContext
+    serviceManager
         .getService(TransactionPoolService.class)
         .ifPresent(TransactionPoolService::disableTransactionPool);
   }
