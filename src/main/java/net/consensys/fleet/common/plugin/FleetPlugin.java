@@ -109,7 +109,7 @@ public class FleetPlugin implements BesuPlugin {
                           method.getNamespace(), method.getName(), method::execute);
                     }));
 
-    LOG.debug("Register trieLog service");
+    LOG.debug("Registering trieLog service");
     final TrieLogService trieLogService = new FleetTrieLogService();
     serviceManager.addService(TrieLogService.class, trieLogService);
     pluginServiceProvider.provideService(TrieLogService.class, () -> trieLogService);
@@ -125,7 +125,7 @@ public class FleetPlugin implements BesuPlugin {
             .orElseThrow(
                 () ->
                     new IllegalStateException(
-                        "Expecting a rlp converter service, but none found."));
+                        "Expecting a RLP converter service, but none found."));
     pluginServiceProvider.provideService(RlpConverterService.class, () -> rlpConverterService);
 
     LOG.debug("Loading blockchain service");
