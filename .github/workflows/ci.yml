@@ -9,7 +9,10 @@ on:
 jobs:
   assemble:
     runs-on: ubuntu-latest
+    environment: dev
     env:
+      ARTIFACTORY_REPO: besu-maven
+      ARTIFACTORY_ORG: hyperledger
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
 
     steps:
@@ -34,7 +37,9 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Assemble
-        run: ./gradlew --no-daemon clean compileJava compileTestJava assemble
+        run: |
+          env
+          ./gradlew --no-daemon clean compileJava compileTestJava assemble
 
       - name: Upload workspace
         uses: actions/upload-artifact@v3
