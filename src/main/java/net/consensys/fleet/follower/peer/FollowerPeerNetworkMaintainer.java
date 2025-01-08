@@ -80,11 +80,13 @@ public class FollowerPeerNetworkMaintainer extends PeerNetworkMaintainer {
                 (isSucceed, throwable) -> {
                   if (!isSucceed) {
                     LOG.error(
-                        "Unable to establish a connection with the leader retry in 30 secondes");
+                        "Unable to connect with leader ({}:{}). Next retry in 30 seconds",
+                        leaderHttpHost,
+                        leaderHttpPort);
                   } else {
                     if (!isConnected) {
                       LOG.info(
-                          "Connection attempt with the leader ({}:{}) was successful for follower ({}:{} next ping in {} seconds)",
+                          "Connection with leader ({}:{}) successful for follower ({}:{}). Next ping in {} seconds",
                           leaderHttpHost,
                           leaderHttpPort,
                           followerHttpHost,

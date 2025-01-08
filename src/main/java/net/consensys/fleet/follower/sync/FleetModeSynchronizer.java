@@ -83,7 +83,7 @@ public class FleetModeSynchronizer {
       synchronizationService.fireNewUnverifiedForkchoiceEvent(
           head.getBlockHash(), safeBlock, finalizedBlock);
       LOG.debug(
-          "fire fork choice for safe block {} and finalized block {} ", safeBlock, finalizedBlock);
+          "Fire fork choice for safe block {} and finalized block {} ", safeBlock, finalizedBlock);
 
       if (isWaitingForSync.get()) {
         LOG.debug("Waiting for the end of the initial synchronization phase");
@@ -171,8 +171,8 @@ public class FleetModeSynchronizer {
                       while (!persistedBlockHash.equals(targetBlockHash)) {
                         LOG.info("Reorg detected so we clean the cache");
                         blockContextProvider.clear();
-                        LOG.debug("Paired Rollback {}", persistedBlockHash);
-                        LOG.debug("Paired Rollforward {}", targetBlockHash);
+                        LOG.debug("Paired rollback {}", persistedBlockHash);
+                        LOG.debug("Paired rollforward {}", targetBlockHash);
 
                         rollForward.add(
                             getLeaderBlockContext(targetBlock.getBlockHeader().getNumber())
@@ -195,7 +195,7 @@ public class FleetModeSynchronizer {
 
                       for (BlockContextProvider.FleetBlockContext blockContext : rollBackward) {
                         LOG.debug(
-                            "Attempting RollBack of {}",
+                            "Attempting rollback of {}",
                             blockContext.getBlockHeader().getBlockHash());
                         Optional<Bytes> maybeTrieLog = blockContext.trieLogRlp();
                         maybeTrieLog.ifPresent(
@@ -219,7 +219,7 @@ public class FleetModeSynchronizer {
 
                       for (BlockContextProvider.FleetBlockContext blockContext : rollForward) {
                         LOG.debug(
-                            "Attempting RollForward of {}",
+                            "Attempting rollforward of {}",
                             blockContext.getBlockHeader().getBlockHash());
                         // save trielog and set head
                         Optional<Bytes> maybeTrieLog = blockContext.trieLogRlp();
@@ -257,7 +257,7 @@ public class FleetModeSynchronizer {
                           .getBlockHeader()
                           .getBlockHash()
                           .equals(chainHead.getBlockHash())) {
-                        LOG.debug("head not changed " + chainHead.getBlockHash());
+                        LOG.debug("head not changed {}", chainHead.getBlockHash());
                       } else if (Math.abs(
                               newHead.getBlockHeader().getNumber()
                                   - oldHead.getBlockHeader().getNumber())
@@ -277,7 +277,7 @@ public class FleetModeSynchronizer {
                   } catch (MissingBlockException e) {
                     syncDelay *= retryFactor;
                     startSync();
-                    LOG.trace("There's missing block in the leader, retry after {} ms", syncDelay);
+                    LOG.debug("Missing block in the leader, retry after {} ms", syncDelay);
                   } catch (Exception e) {
                     // reset local cache
                     blockContextProvider.clear();
