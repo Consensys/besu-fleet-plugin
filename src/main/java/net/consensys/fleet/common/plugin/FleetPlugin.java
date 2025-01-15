@@ -44,6 +44,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.google.auto.service.AutoService;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
+import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
@@ -156,8 +157,6 @@ public class FleetPlugin implements BesuPlugin {
                     new IllegalStateException("Expecting a P2P network service, but none found."));
     pluginServiceProvider.provideService(P2PService.class, () -> p2PService);
 
-    loadingClientsMethods();
-
     createPeerNetworkMaintainer();
   }
 
@@ -178,6 +177,17 @@ public class FleetPlugin implements BesuPlugin {
   private void createPeerNetworkMaintainer() {
     LOG.debug("Setting up connection parameters");
     final PeerNetworkMaintainer peerNetworkMaintainer;
+    // get follower host and port from besuConfigService
+
+    LOG.debug("Loading BesuConfiguration service");
+    final BesuConfiguration besuConfigurationService =
+        serviceManager
+            .getService(BesuConfiguration.class)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Expecting a BesuConfiguration service, but none found."));
+
     switch (CLI_OPTIONS.getNodeRole()) {
       case LEADER -> {
         /* ********** LEADER ************* */
@@ -189,8 +199,9 @@ public class FleetPlugin implements BesuPlugin {
             new FollowerPeerNetworkMaintainer(
                 CLI_OPTIONS.getLeaderPeerHttpHost(),
                 CLI_OPTIONS.getLeaderPeerHttpPort(),
-                CLI_OPTIONS.getFollowerPeerHttpHost(),
-                CLI_OPTIONS.getFollowerPeerHttpPort(),
+                // TODO these values should never not be present
+                besuConfigurationService.getRpcHttpHost().orElse("default"),
+                besuConfigurationService.getRpcHttpPort().orElse(0),
                 CLI_OPTIONS.getFollowerHeartBeatDelay(),
                 peerManagers,
                 webClient);

@@ -67,6 +67,7 @@ public class FleetOptions {
       description = "HTTP host port of the leader peer")
   Integer leaderPeerHttpPort = DEFAULT_LEADER_PEER_HTTP_PORT;
 
+  @Deprecated
   @CommandLine.Option(
       names = {OPTION_FOLLOWER_PEER_HTTP_HOST},
       hidden = true,
@@ -74,6 +75,7 @@ public class FleetOptions {
       description = "HTTP host of the follower peer")
   String followerPeerHttpHost = DEFAULT_FOLLOWER_PEER_HTTP_HOST;
 
+  @Deprecated
   @CommandLine.Option(
       names = {OPTION_FOLLOWER_PEER_HTTP_PORT},
       hidden = true,
@@ -121,10 +123,12 @@ public class FleetOptions {
     return leaderPeerHttpPort;
   }
 
+  @Deprecated
   public String getFollowerPeerHttpHost() {
     return followerPeerHttpHost;
   }
 
+  @Deprecated
   public Integer getFollowerPeerHttpPort() {
     return followerPeerHttpPort;
   }
@@ -147,8 +151,6 @@ public class FleetOptions {
         .add("nodeRole", nodeRole)
         .add("leaderPeerHttpHost", leaderPeerHttpHost)
         .add("leaderPeerHttpPort", leaderPeerHttpPort)
-        .add("followerPeerHttpHost", followerPeerHttpHost)
-        .add("followerPeerHttpPort", followerPeerHttpPort)
         .add("followerHeartBeatDelay", followerHeartBeatDelay)
         .add("persistRangeSize", maxBlocksPerPersist)
         .add("headDistanceForReceiptFetch", headDistanceForReceiptFetch)
