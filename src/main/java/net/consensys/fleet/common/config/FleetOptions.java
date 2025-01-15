@@ -56,7 +56,6 @@ public class FleetOptions {
   @CommandLine.Option(
       names = {OPTION_LEADER_PEER_HTTP_HOST},
       hidden = true,
-      defaultValue = DEFAULT_LEADER_PEER_HTTP_HOST,
       paramLabel = "<STRING>",
       description = "HTTP host of the leader peer")
   String leaderPeerHttpHost = DEFAULT_LEADER_PEER_HTTP_HOST;
@@ -64,7 +63,6 @@ public class FleetOptions {
   @CommandLine.Option(
       names = {OPTION_LEADER_PEER_HTTP_PORT},
       hidden = true,
-      defaultValue = "8545",
       paramLabel = "<INTEGER>",
       description = "HTTP host port of the leader peer")
   Integer leaderPeerHttpPort = DEFAULT_LEADER_PEER_HTTP_PORT;
@@ -72,23 +70,20 @@ public class FleetOptions {
   @CommandLine.Option(
       names = {OPTION_FOLLOWER_PEER_HTTP_HOST},
       hidden = true,
-      defaultValue = DEFAULT_FOLLOWER_PEER_HTTP_HOST,
       paramLabel = "<STRING>",
-      description = "HTTP host of the leader peer")
+      description = "HTTP host of the follower peer")
   String followerPeerHttpHost = DEFAULT_FOLLOWER_PEER_HTTP_HOST;
 
   @CommandLine.Option(
       names = {OPTION_FOLLOWER_PEER_HTTP_PORT},
       hidden = true,
-      defaultValue = "8545",
       paramLabel = "<INTEGER>",
-      description = "HTTP host port of the leader peer")
+      description = "HTTP host port of the follower peer")
   Integer followerPeerHttpPort = DEFAULT_FOLLOWER_PEER_HTTP_PORT;
 
   @CommandLine.Option(
       names = {OPTION_FOLLOWER_HEARTBEAT_DELAY},
       hidden = true,
-      defaultValue = "30",
       paramLabel = "<INTEGER>",
       description = "Number of seconds between two pings from the followers pinging the leader")
   Integer followerHeartBeatDelay = DEFAULT_FOLLOWER_HEARTBEAT_DELAY;
@@ -96,7 +91,6 @@ public class FleetOptions {
   @CommandLine.Option(
       names = {OPTION_FOLLOWER_MAX_BLOCK_PER_PERSIST},
       hidden = true,
-      defaultValue = "50",
       paramLabel = "<INTEGER>",
       description = "Limit the number of blocks persisted in a single operation")
   Integer maxBlocksPerPersist = DEFAULT_FOLLOWER_MAX_BLOCK_PER_PERSIST;
@@ -104,10 +98,9 @@ public class FleetOptions {
   @CommandLine.Option(
       names = {HEAD_DISTANCE_FOR_RECEIPT_FETCH},
       hidden = true,
-      defaultValue = "2048",
       paramLabel = "<INTEGER>",
       description =
-          "The distance from the head of the chain at which receipt fetching begins.(default: ${DEFAULT-VALUE})")
+          "The distance from the head of the chain at which receipt fetching begins. (default: ${DEFAULT-VALUE})")
   Integer headDistanceForReceiptFetch = DEFAULT_FOLLOWER_HEAD_DISTANCE_FOR_RECEIPT_FETCH;
 
   private FleetOptions() {}
