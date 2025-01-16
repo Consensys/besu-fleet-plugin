@@ -24,7 +24,7 @@ Or, run the besu with follower mode:
 ```
 /bin/besu --data-storage-format=BONSAI \
 --data-path="workdir/besu-follower/data" \
---Xsnapsync-synchronizer-flat-db-healing-enabled=true \
+--Xbonsai-full-flat-db-enabled=true \
 --plugin-fleet-node-role=FOLLOWER \
 --p2p-port=40404 \
 --rpc-http-apis=FLEET,ETH \
