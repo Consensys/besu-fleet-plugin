@@ -74,7 +74,7 @@ public class WebClientWrapper {
                 completableFuture.complete(event.result());
               }
               LOG.trace(
-                  "send rpc request {} result {} for body {} {}",
+                  "Send RPC request {} result {} for body {} {}",
                   methodName,
                   event.succeeded(),
                   jsonObject.toString(),
@@ -103,9 +103,9 @@ public class WebClientWrapper {
                       jsonObject,
                       event -> {
                         LOG.trace(
-                            "send rpc request {} to {} result {} for body {}",
-                            peerNode,
+                            "Send RPC request {} to {} result {} for body {}",
                             methodName,
+                            peerNode,
                             event.succeeded(),
                             jsonObject.toString());
                       });

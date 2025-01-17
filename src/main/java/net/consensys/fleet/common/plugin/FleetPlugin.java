@@ -118,7 +118,7 @@ public class FleetPlugin implements BesuPlugin {
   @Override
   public void start() {
 
-    LOG.debug("Loading rlp converter service");
+    LOG.debug("Loading RLP converter service");
     final RlpConverterService rlpConverterService =
         serviceManager
             .getService(RlpConverterService.class)
@@ -136,12 +136,14 @@ public class FleetPlugin implements BesuPlugin {
                 () -> new IllegalStateException("Expecting a blockchain service, but none found."));
     pluginServiceProvider.provideService(BlockchainService.class, () -> blockchainService);
 
-    LOG.debug("Loading synchronization service and configuration");
+    LOG.debug("Loading synchronization service");
     final SynchronizationService synchronizationService =
         serviceManager
             .getService(SynchronizationService.class)
             .orElseThrow(
-                () -> new IllegalStateException("Expecting a sync service, but none found."));
+                () ->
+                    new IllegalStateException(
+                        "Expecting a synchronization service, but none found."));
     pluginServiceProvider.provideService(
         SynchronizationService.class, () -> synchronizationService);
 
@@ -193,7 +195,8 @@ public class FleetPlugin implements BesuPlugin {
                 peerManagers,
                 webClient);
       }
-      default -> throw new IllegalStateException("Unexpected value: " + CLI_OPTIONS.getNodeRole());
+      default -> throw new IllegalStateException(
+          "Unexpected node role: " + CLI_OPTIONS.getNodeRole());
     }
     peerNetworkMaintainer.start();
   }

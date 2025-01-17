@@ -23,15 +23,20 @@ Then, run the besu with leader mode:
 Or, run the besu with follower mode:
 ```
 /bin/besu --data-storage-format=BONSAI \
---Xsnapsync-synchronizer-flat-db-healing-enabled=true \
+--data-path="workdir/besu-follower/data" \
+--Xbonsai-full-flat-db-enabled=true \
 --plugin-fleet-node-role=FOLLOWER \
+--p2p-port=40404 \
 --rpc-http-apis=FLEET,ETH \
 --rpc-http-enabled \
 --rpc-http-host=127.0.0.1 \
 --rpc-http-port=8888 \
+--engine-rpc-port=8661 \
 --Xchain-pruning-blocks-retained=512 \
 --plugin-fleet-leader-http-host=127.0.0.1 \
 --plugin-fleet-leader-http-port=8545 \
+--plugin-fleet-follower-http-host=127.0.0.1 \
+--plugin-fleet-follower-http-port=8888
 ```
 
 # Download
