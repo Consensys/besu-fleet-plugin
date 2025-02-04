@@ -1,11 +1,18 @@
 name: docker-build-fleet
 
 on:
+
   workflow_dispatch:
     inputs:
       besu_version:
         description: 'the commit or version of besu to use'
         default: 'main'
+        required: false
+        type: string
+
+      besu_repo:
+        description: 'the repo of besu to use'
+        default: 'hyperledger/besu'
         required: false
         type: string
 
@@ -54,7 +61,7 @@ jobs:
       - name: checkout besu
         uses: actions/checkout@v3
         with:
-          repository: hyperledger/besu
+          repository: '${{ github.event.inputs.besu_repo }}'
           ref: '${{ github.event.inputs.besu_version }}'
           submodules: true
 
