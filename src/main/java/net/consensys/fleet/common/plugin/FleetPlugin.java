@@ -177,7 +177,6 @@ public class FleetPlugin implements BesuPlugin {
   private void createPeerNetworkMaintainer() {
     LOG.debug("Setting up connection parameters");
     final PeerNetworkMaintainer peerNetworkMaintainer;
-    // get follower host and port from besuConfigService
 
     LOG.debug("Loading BesuConfiguration service");
     final BesuConfiguration besuConfigurationService =
@@ -199,7 +198,6 @@ public class FleetPlugin implements BesuPlugin {
             new FollowerPeerNetworkMaintainer(
                 CLI_OPTIONS.getLeaderPeerHttpHost(),
                 CLI_OPTIONS.getLeaderPeerHttpPort(),
-                // TODO these values should never not be present
                 besuConfigurationService.getRpcHttpHost().orElse("default"),
                 besuConfigurationService.getRpcHttpPort().orElse(0),
                 CLI_OPTIONS.getFollowerHeartBeatDelay(),
