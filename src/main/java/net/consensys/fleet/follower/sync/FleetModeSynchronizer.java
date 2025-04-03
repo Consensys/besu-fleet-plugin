@@ -58,6 +58,7 @@ public class FleetModeSynchronizer {
   /** retry interval increases by this number of milliseconds each time there's a block miss */
   private final long retryIncrease = 2;
 
+  /** number of milliseconds to wait before retrying sync */
   private long syncDelay;
 
   private ScheduledFuture<?> syncScheduler;
@@ -99,6 +100,7 @@ public class FleetModeSynchronizer {
     if (syncScheduler != null) {
       syncScheduler.cancel(false);
     }
+    // start with 1ms interval
     syncDelay = 1;
   }
 
@@ -276,6 +278,7 @@ public class FleetModeSynchronizer {
 
                     } while (!chainHead.getBlockHash().equals(this.leaderHeader.getBlockHash()));
                   } catch (MissingBlockException e) {
+                    // increase the time we wait before retrying
                     syncDelay += retryIncrease;
                     startSync();
                     LOG.debug("Missing block in the leader, retry after {} ms", syncDelay);
