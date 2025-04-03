@@ -14,14 +14,27 @@
  */
 package net.consensys.fleet.common.rpc.model;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.TransactionReceipt;
 
 public class NewHeadParams {
 
   @JsonProperty("newHead")
   private BlockHeader head;
+
+  @JsonProperty("headBody")
+  private BlockBody blockBody;
+
+  @JsonProperty("headReceipts")
+  private List<TransactionReceipt> receipts;
+
+  @JsonProperty("headTrieLogRlp")
+  private String trieLogRlp;
 
   @JsonProperty("safeBlock")
   private Hash safeBlock;
@@ -31,14 +44,35 @@ public class NewHeadParams {
 
   public NewHeadParams() {}
 
-  public NewHeadParams(final BlockHeader head, final Hash safeBlock, final Hash finalizedBlock) {
+  public NewHeadParams(
+      final BlockHeader head,
+      final BlockBody blockBody,
+      final List<TransactionReceipt> receipts,
+      final String trieLogRlp,
+      final Hash safeBlock,
+      final Hash finalizedBlock) {
     this.head = head;
+    this.blockBody = blockBody;
+    this.receipts = receipts;
+    this.trieLogRlp = trieLogRlp;
     this.safeBlock = safeBlock;
     this.finalizedBlock = finalizedBlock;
   }
 
   public BlockHeader getHead() {
     return head;
+  }
+
+  public BlockBody getBlockBody() {
+    return blockBody;
+  }
+
+  public List<TransactionReceipt> getReceipts() {
+    return receipts;
+  }
+
+  public String getTrieLogRlp() {
+    return trieLogRlp;
   }
 
   public Hash getSafeBlock() {

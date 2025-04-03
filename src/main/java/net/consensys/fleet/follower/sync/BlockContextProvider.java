@@ -61,7 +61,7 @@ public class BlockContextProvider {
             GetBlockResponse getBlockParams =
                 getBlockClient
                     .sendData(new GetBlockRequest(blockNumber, fetchReceipts))
-                    .get(1, TimeUnit.SECONDS);
+                    .get(10, TimeUnit.MILLISECONDS);
             return Optional.of(
                 new FleetBlockContext(
                     getBlockParams.getBlockHeader(),
@@ -72,6 +72,18 @@ public class BlockContextProvider {
     } catch (Exception e) {
       return Optional.empty();
     }
+  }
+
+  public void provideLocalBlockContext(
+      final BlockHeader blockHeader,
+      final BlockBody blockBody,
+      final List<TransactionReceipt> receipts,
+      final String trielogRlp) {
+    localBlock.put(
+        new CompositeBlockKey(blockHeader.getNumber(), blockHeader.getBlockHash()),
+        Optional.of(
+            new FleetBlockContext(
+                blockHeader, blockBody, receipts, Optional.of(Bytes.fromHexString(trielogRlp)))));
   }
 
   public Optional<FleetBlockContext> getLocalBlockContextByNumber(

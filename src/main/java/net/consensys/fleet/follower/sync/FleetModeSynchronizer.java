@@ -15,6 +15,7 @@
 package net.consensys.fleet.follower.sync;
 
 import net.consensys.fleet.common.plugin.PluginServiceProvider;
+import net.consensys.fleet.common.rpc.model.NewHeadParams;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -76,17 +77,24 @@ public class FleetModeSynchronizer {
     this.headDistanceForReceiptFetch = headDistanceForReceiptFetch;
   }
 
-  public synchronized void syncNewHead(
-      final BlockHeader head, final Hash safeBlock, final Hash finalizedBlock) {
-    this.leaderHeader = head;
+  public synchronized void syncNewHead(final NewHeadParams newHeadParams) {
+    this.leaderHeader = newHeadParams.getHead();
     if (isBlockchainServiceReady()) {
       final SynchronizationService synchronizationService =
           pluginServiceProvider.getService(SynchronizationService.class);
+      blockContextProvider.provideLocalBlockContext(
+          newHeadParams.getHead(),
+          newHeadParams.getBlockBody(),
+          newHeadParams.getReceipts(),
+          newHeadParams.getTrieLogRlp());
       synchronizationService.fireNewUnverifiedForkchoiceEvent(
-          head.getBlockHash(), safeBlock, finalizedBlock);
+          newHeadParams.getHead().getBlockHash(),
+          newHeadParams.getSafeBlock(),
+          newHeadParams.getFinalizedBlock());
       LOG.debug(
-          "Fire fork choice for safe block {} and finalized block {} ", safeBlock, finalizedBlock);
-
+          "Fire fork choice for safe block {} and finalized block {} ",
+          newHeadParams.getSafeBlock(),
+          newHeadParams.getFinalizedBlock());
       if (isWaitingForSync.get()) {
         LOG.debug("Waiting for the end of the initial synchronization phase");
       } else {

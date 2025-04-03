@@ -18,10 +18,14 @@ import net.consensys.fleet.common.plugin.PluginServiceProvider;
 import net.consensys.fleet.common.rpc.model.NewHeadParams;
 import net.consensys.fleet.leader.rpc.client.FleetShipNewHeadClient;
 
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.data.AddedBlockContext;
+import org.hyperledger.besu.plugin.data.TransactionReceipt;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.hyperledger.besu.plugin.services.TrieLogService;
+import org.hyperledger.besu.plugin.services.trielogs.TrieLogProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,15 +49,33 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
         .addArgument(() -> addedBlockContext.getBlockHeader().getBlockHash())
         .log();
     if (pluginServiceProvider.isServiceAvailable(BlockchainService.class)) {
-      final BlockchainService service = pluginServiceProvider.getService(BlockchainService.class);
-      final Hash safeBlock =
-          service.getSafeBlock().orElse(addedBlockContext.getBlockHeader().getBlockHash());
-      final Hash finalizedBlock =
-          service.getFinalizedBlock().orElse(addedBlockContext.getBlockHeader().getBlockHash());
-      stateShipNewHeadSender.sendData(
-          new NewHeadParams(addedBlockContext.getBlockHeader(), safeBlock, finalizedBlock));
+      stateShipNewHeadSender.sendData(buildNewHeadEvent(addedBlockContext));
     } else {
       LOG.error("BlockchainService is not available");
     }
+  }
+
+  private NewHeadParams buildNewHeadEvent(final AddedBlockContext headBlockContext) {
+    final BlockchainService service = pluginServiceProvider.getService(BlockchainService.class);
+    final Hash safeBlock =
+        service.getSafeBlock().orElse(headBlockContext.getBlockHeader().getBlockHash());
+    final Hash finalizedBlock =
+        service.getFinalizedBlock().orElse(headBlockContext.getBlockHeader().getBlockHash());
+    final TrieLogProvider trieLogProvider =
+        pluginServiceProvider.getService(TrieLogService.class).getTrieLogProvider();
+    final String trieLogRlp =
+        trieLogProvider
+            .getRawTrieLogLayer(headBlockContext.getBlockHeader().getBlockHash())
+            .map(Bytes::toHexString)
+            .orElseThrow();
+    return new NewHeadParams(
+        headBlockContext.getBlockHeader(),
+        headBlockContext.getBlockBody(),
+        headBlockContext.getTransactionReceipts().stream()
+            .map(TransactionReceipt.class::cast)
+            .toList(),
+        trieLogRlp,
+        safeBlock,
+        finalizedBlock);
   }
 }

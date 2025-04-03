@@ -63,10 +63,7 @@ public class FleetShipNewHeadServer implements PluginRpcMethod {
             newHeadParams.getHead().getBlockHash(),
             newHeadParams.getSafeBlock(),
             newHeadParams.getFinalizedBlock());
-        newHeadObserver.onNewHead(
-            newHeadParams.getHead(),
-            newHeadParams.getSafeBlock(),
-            newHeadParams.getFinalizedBlock());
+        newHeadObserver.onNewHead(newHeadParams);
       }
     } catch (Exception e) {
       LOG.trace("Ignore invalid request for method {} with {}", getName(), rpcRequest.getParams());

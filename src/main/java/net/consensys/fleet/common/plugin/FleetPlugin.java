@@ -255,8 +255,7 @@ public class FleetPlugin implements BesuPlugin {
             CLI_OPTIONS.getHeadDistanceForReceiptFetch());
     methods.add(
         new FleetShipNewHeadServer(
-            (head, safeBlock, finalizedBlock) ->
-                fleetModeSynchronizer.syncNewHead(head, safeBlock, finalizedBlock),
+            (newHeadParams) -> fleetModeSynchronizer.syncNewHead(newHeadParams),
             convertMapperProvider,
             pluginServiceProvider));
     return methods;

@@ -14,10 +14,9 @@
  */
 package net.consensys.fleet.leader.event;
 
-import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.plugin.data.BlockHeader;
+import net.consensys.fleet.common.rpc.model.NewHeadParams;
 
 public interface NewHeadObserver {
 
-  void onNewHead(final BlockHeader head, final Hash safeBlock, final Hash finalizedBlock);
+  void onNewHead(final NewHeadParams newHeadParams);
 }
