@@ -281,7 +281,7 @@ public class FleetModeSynchronizer {
                     // increase the time we wait before retrying
                     syncDelay += retryIncrease;
                     startSync();
-                    LOG.debug("Missing block in the leader, retry after {} ms", syncDelay);
+                    LOG.info("Missing block in the leader, retry after {} ms", syncDelay);
                   } catch (Exception e) {
                     // reset local cache
                     blockContextProvider.clear();
