@@ -55,7 +55,8 @@ public class FleetModeSynchronizer {
       maxBlocksPerPersist; // limit the number of blocks persisted in a single operation
   private final Integer headDistanceForReceiptFetch;
 
-  private final long retryFactor = 2;
+  /** retry interval increases by this number of milliseconds each time there's a block miss */
+  private final long retryIncrease = 2;
 
   private long syncDelay;
 
@@ -275,7 +276,7 @@ public class FleetModeSynchronizer {
 
                     } while (!chainHead.getBlockHash().equals(this.leaderHeader.getBlockHash()));
                   } catch (MissingBlockException e) {
-                    syncDelay *= retryFactor;
+                    syncDelay += retryIncrease;
                     startSync();
                     LOG.debug("Missing block in the leader, retry after {} ms", syncDelay);
                   } catch (Exception e) {
