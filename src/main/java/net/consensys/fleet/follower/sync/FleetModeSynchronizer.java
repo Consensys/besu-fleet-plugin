@@ -91,16 +91,18 @@ public class FleetModeSynchronizer {
           newHeadParams.getHead().getBlockHash(),
           newHeadParams.getSafeBlock(),
           newHeadParams.getFinalizedBlock());
-      LOG.debug(
+      LOG.info(
           "Fire fork choice for safe block {} and finalized block {} ",
           newHeadParams.getSafeBlock(),
           newHeadParams.getFinalizedBlock());
       if (isWaitingForSync.get()) {
-        LOG.debug("Waiting for the end of the initial synchronization phase");
+        LOG.info("Waiting for the end of the initial synchronization phase");
       } else {
         disableWaitingSync();
         startSync();
       }
+    } else {
+      LOG.debug("Blockchain service is not ready");
     }
   }
 

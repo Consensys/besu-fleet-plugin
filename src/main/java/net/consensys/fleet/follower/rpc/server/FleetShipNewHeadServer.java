@@ -57,7 +57,7 @@ public class FleetShipNewHeadServer implements PluginRpcMethod {
             convertMapperProvider
                 .getJsonConverter()
                 .readValue(rpcRequest.getParams()[0].toString(), NewHeadParams.class);
-        LOG.debug(
+        LOG.info(
             "receive new head {} ({}) , safe block {} and finalized block {}",
             newHeadParams.getHead().getNumber(),
             newHeadParams.getHead().getBlockHash(),

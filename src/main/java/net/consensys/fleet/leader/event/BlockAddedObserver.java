@@ -49,6 +49,7 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
         .addArgument(() -> addedBlockContext.getBlockHeader().getBlockHash())
         .log();
     if (pluginServiceProvider.isServiceAvailable(BlockchainService.class)) {
+      LOG.debug("stateShipNewHeadSender new block");
       stateShipNewHeadSender.sendData(buildNewHeadEvent(addedBlockContext));
     } else {
       LOG.error("BlockchainService is not available");
