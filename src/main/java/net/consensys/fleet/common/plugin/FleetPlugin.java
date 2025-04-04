@@ -157,6 +157,8 @@ public class FleetPlugin implements BesuPlugin {
                     new IllegalStateException("Expecting a P2P network service, but none found."));
     pluginServiceProvider.provideService(P2PService.class, () -> p2PService);
 
+    loadingClientsMethods();
+
     createPeerNetworkMaintainer();
   }
 
