@@ -37,10 +37,10 @@ import org.hyperledger.besu.plugin.services.BlockchainService;
 
 public class BlockContextProvider {
 
-  private final Cache<CompositeBlockKey, Optional<FleetBlockContext>> leaderBlock =
+  private final Cache<CompositeBlockKey, FleetBlockContext> leaderBlock =
       CacheBuilder.newBuilder().maximumSize(20).expireAfterAccess(1, TimeUnit.MINUTES).build();
 
-  private final Cache<CompositeBlockKey, Optional<FleetBlockContext>> localBlock =
+  private final Cache<CompositeBlockKey, FleetBlockContext> localBlock =
       CacheBuilder.newBuilder().maximumSize(20).expireAfterAccess(1, TimeUnit.MINUTES).build();
 
   private final PluginServiceProvider pluginServiceProvider;
@@ -55,66 +55,80 @@ public class BlockContextProvider {
   public Optional<FleetBlockContext> getLeaderBlockContextByNumber(
       final long blockNumber, final boolean fetchReceipts) {
     try {
-      return leaderBlock.get(
-          new CompositeBlockKey(blockNumber),
-          () -> {
-            GetBlockResponse getBlockParams =
-                getBlockClient
-                    .sendData(new GetBlockRequest(blockNumber, fetchReceipts))
-                    .get(10, TimeUnit.MILLISECONDS);
-            return Optional.of(
-                new FleetBlockContext(
-                    getBlockParams.getBlockHeader(),
-                    getBlockParams.getBlockBody(),
-                    getBlockParams.getReceipts(),
-                    Optional.of(Bytes.fromHexString(getBlockParams.getTrieLogRlp()))));
-          });
+      CompositeBlockKey key = new CompositeBlockKey(blockNumber);
+      Optional<FleetBlockContext> cachedContext =
+          Optional.ofNullable(leaderBlock.getIfPresent(key));
+
+      if (cachedContext.isPresent()) {
+        return cachedContext;
+      }
+
+      GetBlockResponse response =
+          getBlockClient
+              .sendData(new GetBlockRequest(blockNumber, fetchReceipts))
+              .get(50, TimeUnit.MILLISECONDS);
+
+      FleetBlockContext context =
+          new FleetBlockContext(
+              response.getBlockHeader(),
+              response.getBlockBody(),
+              response.getReceipts(),
+              Optional.of(Bytes.fromHexString(response.getTrieLogRlp())));
+
+      leaderBlock.put(key, context);
+      return Optional.of(context);
     } catch (Exception e) {
       return Optional.empty();
     }
   }
 
-  public void provideLocalBlockContext(
+  public void provideLeaderBlockContext(
       final BlockHeader blockHeader,
       final BlockBody blockBody,
       final List<TransactionReceipt> receipts,
-      final String trielogRlp) {
-    localBlock.put(
-        new CompositeBlockKey(blockHeader.getNumber(), blockHeader.getBlockHash()),
-        Optional.of(
-            new FleetBlockContext(
-                blockHeader, blockBody, receipts, Optional.of(Bytes.fromHexString(trielogRlp)))));
+      final String trieLogRlp) {
+
+    CompositeBlockKey key =
+        new CompositeBlockKey(blockHeader.getNumber(), blockHeader.getBlockHash());
+    FleetBlockContext context =
+        new FleetBlockContext(
+            blockHeader, blockBody, receipts, Optional.of(Bytes.fromHexString(trieLogRlp)));
+
+    leaderBlock.put(key, context);
   }
 
   public Optional<FleetBlockContext> getLocalBlockContextByNumber(
       final long number, final boolean fetchReceipts) {
     try {
-      return localBlock.get(
-          new CompositeBlockKey(number),
-          () -> {
-            final BlockchainService blockchainService =
-                pluginServiceProvider.getService(BlockchainService.class);
-            return blockchainService
-                .getBlockByNumber(number)
-                .map(
-                    blockContext -> {
-                      final List<TransactionReceipt> receiptsByBlockHash;
-                      if (fetchReceipts) {
-                        receiptsByBlockHash =
-                            blockchainService
-                                .getReceiptsByBlockHash(
-                                    blockContext.getBlockHeader().getBlockHash())
-                                .orElse(Collections.emptyList());
-                      } else {
-                        receiptsByBlockHash = Collections.emptyList();
-                      }
-                      return new FleetBlockContext(
-                          blockContext.getBlockHeader(),
-                          blockContext.getBlockBody(),
-                          receiptsByBlockHash,
-                          Optional.empty());
-                    });
-          });
+      CompositeBlockKey key = new CompositeBlockKey(number);
+      Optional<FleetBlockContext> cachedContext = Optional.ofNullable(localBlock.getIfPresent(key));
+
+      if (cachedContext.isPresent()) {
+        return cachedContext;
+      }
+
+      BlockchainService blockchainService =
+          pluginServiceProvider.getService(BlockchainService.class);
+
+      return blockchainService
+          .getBlockByNumber(number)
+          .map(
+              block -> {
+                List<TransactionReceipt> receipts =
+                    fetchReceipts
+                        ? blockchainService
+                            .getReceiptsByBlockHash(block.getBlockHeader().getBlockHash())
+                            .orElse(Collections.emptyList())
+                        : Collections.emptyList();
+
+                FleetBlockContext context =
+                    new FleetBlockContext(
+                        block.getBlockHeader(), block.getBlockBody(), receipts, Optional.empty());
+
+                localBlock.put(key, context);
+                return context;
+              });
+
     } catch (Exception e) {
       return Optional.empty();
     }
@@ -161,7 +175,7 @@ public class BlockContextProvider {
 
     @Override
     public int hashCode() {
-      return Objects.hash(blockNumber, blockHash);
+      return Objects.hash(blockNumber);
     }
   }
 

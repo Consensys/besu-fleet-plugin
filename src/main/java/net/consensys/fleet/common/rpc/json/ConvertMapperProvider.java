@@ -16,6 +16,7 @@ package net.consensys.fleet.common.rpc.json;
 
 import net.consensys.fleet.common.plugin.PluginServiceProvider;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.hyperledger.besu.plugin.services.rlp.RlpConverterService;
 
@@ -32,6 +33,7 @@ public class ConvertMapperProvider {
     if (objectMapper == null) {
       if (pluginServiceProvider.isServiceAvailable(RlpConverterService.class)) {
         objectMapper = new ObjectMapper();
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         objectMapper.registerModule(
             new JsonModule(pluginServiceProvider.getService(RlpConverterService.class)));
       } else {

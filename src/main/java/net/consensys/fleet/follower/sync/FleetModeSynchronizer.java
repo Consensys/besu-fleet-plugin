@@ -82,11 +82,14 @@ public class FleetModeSynchronizer {
     if (isBlockchainServiceReady()) {
       final SynchronizationService synchronizationService =
           pluginServiceProvider.getService(SynchronizationService.class);
-      blockContextProvider.provideLocalBlockContext(
-          newHeadParams.getHead(),
-          newHeadParams.getBlockBody(),
-          newHeadParams.getReceipts(),
-          newHeadParams.getTrieLogRlp());
+      if (newHeadParams.getTrieLogRlp() != null) {
+        LOG.debug("add block to cache from leader {}", newHeadParams.getHead());
+        blockContextProvider.provideLeaderBlockContext(
+            newHeadParams.getHead(),
+            newHeadParams.getBlockBody(),
+            newHeadParams.getReceipts(),
+            newHeadParams.getTrieLogRlp());
+      }
       synchronizationService.fireNewUnverifiedForkchoiceEvent(
           newHeadParams.getHead().getBlockHash(),
           newHeadParams.getSafeBlock(),
@@ -172,12 +175,22 @@ public class FleetModeSynchronizer {
                       while (persistedBlock.getBlockHeader().getNumber()
                           < targetBlock.getBlockHeader().getNumber()) {
                         LOG.debug("Rollforward {}", targetBlockHash);
-                        rollForward.add(
+                        final BlockContextProvider.FleetBlockContext toRollForwardBlock =
                             getLeaderBlockContext(targetBlock.getBlockHeader().getNumber())
-                                .orElseThrow(MissingBlockException::new));
-                        targetBlock =
-                            getLeaderBlockContext(targetBlock.getBlockHeader().getNumber() - 1)
                                 .orElseThrow(MissingBlockException::new);
+                        rollForward.add(toRollForwardBlock);
+                        if (persistedBlock.getBlockHeader().getNumber()
+                                == (toRollForwardBlock.getBlockHeader().getNumber() - 1)
+                            && toRollForwardBlock
+                                .getBlockHeader()
+                                .getParentHash()
+                                .equals(persistedBlockHash)) {
+                          targetBlock = persistedBlock;
+                        } else {
+                          targetBlock =
+                              getLeaderBlockContext(targetBlock.getBlockHeader().getNumber() - 1)
+                                  .orElseThrow(MissingBlockException::new);
+                        }
                         targetBlockHash = targetBlock.getBlockHeader().getBlockHash();
                       }
 

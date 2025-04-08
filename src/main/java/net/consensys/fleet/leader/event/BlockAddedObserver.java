@@ -18,6 +18,8 @@ import net.consensys.fleet.common.plugin.PluginServiceProvider;
 import net.consensys.fleet.common.rpc.model.NewHeadParams;
 import net.consensys.fleet.leader.rpc.client.FleetShipNewHeadClient;
 
+import java.util.Optional;
+
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.data.AddedBlockContext;
@@ -49,7 +51,6 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
         .addArgument(() -> addedBlockContext.getBlockHeader().getBlockHash())
         .log();
     if (pluginServiceProvider.isServiceAvailable(BlockchainService.class)) {
-      LOG.debug("stateShipNewHeadSender new block");
       stateShipNewHeadSender.sendData(buildNewHeadEvent(addedBlockContext));
     } else {
       LOG.error("BlockchainService is not available");
@@ -64,19 +65,22 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
         service.getFinalizedBlock().orElse(headBlockContext.getBlockHeader().getBlockHash());
     final TrieLogProvider trieLogProvider =
         pluginServiceProvider.getService(TrieLogService.class).getTrieLogProvider();
-    final String trieLogRlp =
+    final Optional<String> maybeTrielog =
         trieLogProvider
             .getRawTrieLogLayer(headBlockContext.getBlockHeader().getBlockHash())
-            .map(Bytes::toHexString)
-            .orElseThrow();
-    return new NewHeadParams(
-        headBlockContext.getBlockHeader(),
-        headBlockContext.getBlockBody(),
-        headBlockContext.getTransactionReceipts().stream()
-            .map(TransactionReceipt.class::cast)
-            .toList(),
-        trieLogRlp,
-        safeBlock,
-        finalizedBlock);
+            .map(Bytes::toHexString);
+    if (maybeTrielog.isEmpty()) {
+      return new NewHeadParams(headBlockContext.getBlockHeader(), safeBlock, finalizedBlock);
+    } else {
+      return new NewHeadParams(
+          headBlockContext.getBlockHeader(),
+          headBlockContext.getBlockBody(),
+          headBlockContext.getTransactionReceipts().stream()
+              .map(TransactionReceipt.class::cast)
+              .toList(),
+          maybeTrielog.get(),
+          safeBlock,
+          finalizedBlock);
+    }
   }
 }

@@ -59,6 +59,12 @@ public class NewHeadParams {
     this.finalizedBlock = finalizedBlock;
   }
 
+  public NewHeadParams(final BlockHeader head, final Hash safeBlock, final Hash finalizedBlock) {
+    this.safeBlock = safeBlock;
+    this.finalizedBlock = finalizedBlock;
+    this.head = head;
+  }
+
   public BlockHeader getHead() {
     return head;
   }
