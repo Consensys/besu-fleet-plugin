@@ -75,9 +75,7 @@ mkdir -p /opt/besu/plugins
 
 ## Release Process
 Here are the steps for releasing a new version of the plugin:
-1. Create a tag with the release version number in the format vX.Y.Z (e.g., v0.2.0 creates a release version 0.2.0).
-2. Push the tag to the repository.
-3. GitHub Actions will automatically create a draft release for the release tag.
-4. Once the release workflow completes, update the release notes, uncheck "Draft", and publish the release.
+1. Create a release from [github](https://github.com/Consensys/besu-fleet-plugin/releases). Select the branch you want and create the tag name there (click create new tag) 
+2. GitHub Actions will automatically create the release artifacts and update the release notes
 
 **Note**: Release tags (of the form v*) are protected and can only be pushed by organization and/or repository owners. 
