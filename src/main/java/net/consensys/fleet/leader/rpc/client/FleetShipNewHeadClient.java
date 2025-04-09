@@ -40,7 +40,7 @@ public class FleetShipNewHeadClient extends AbstractStateRpcSender<NewHeadParams
 
   @Override
   public CompletableFuture<Boolean> sendData(final NewHeadParams data) {
-    LOG.debug("Sending new head to followers");
+    LOG.info("Sending new head to followers");
     final CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
     try {
       webClient.sendToFollowers(ENDPOINT, getMethodeName(), data);

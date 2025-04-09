@@ -41,13 +41,13 @@ public class FleetAddFollowerServer implements PluginRpcMethod {
 
   @Override
   public Object execute(PluginRpcRequest rpcRequest) {
-    LOG.debug("execute {} request with body {}", getName(), rpcRequest.getParams());
+    LOG.info("execute {} request with body {}", getName(), rpcRequest.getParams());
     try {
       final PeerNode peerNode =
           OBJECT_MAPPER.readValue(rpcRequest.getParams()[0].toString(), PeerNode.class);
       followerNodesManager.register(peerNode);
     } catch (JsonProcessingException e) {
-      LOG.trace("Ignore invalid request for method {} with {}", getName(), rpcRequest.getParams());
+      LOG.info("Ignore invalid request for method {} with {}", getName(), rpcRequest.getParams());
     }
     return null;
   }

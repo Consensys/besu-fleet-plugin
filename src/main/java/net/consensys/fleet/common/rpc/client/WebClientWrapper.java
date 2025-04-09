@@ -64,16 +64,18 @@ public class WebClientWrapper {
 
     webClient
         .post(leader.port(), leader.host(), endpoint)
+        .timeout(100)
         .putHeader("Content-Type", CONTENT_TYPE)
         .sendJsonObject(
             jsonObject,
             event -> {
               if (event.failed()) {
+                LOG.info("event failed {}", String.valueOf(event.cause()));
                 completableFuture.completeExceptionally(event.cause());
               } else {
                 completableFuture.complete(event.result());
               }
-              LOG.trace(
+              LOG.info(
                   "Send RPC request {} result {} for body {} {}",
                   methodName,
                   event.succeeded(),
@@ -98,11 +100,12 @@ public class WebClientWrapper {
             peerNode -> {
               webClient
                   .post(peerNode.port(), peerNode.host(), endpoint)
+                  .timeout(100)
                   .putHeader("Content-Type", CONTENT_TYPE)
                   .sendJsonObject(
                       jsonObject,
                       event -> {
-                        LOG.trace(
+                        LOG.info(
                             "Send RPC request {} to {} result {} for body {}",
                             methodName,
                             peerNode,

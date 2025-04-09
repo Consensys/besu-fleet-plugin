@@ -19,6 +19,8 @@ import net.consensys.fleet.common.rpc.model.GetBlockRequest;
 import net.consensys.fleet.common.rpc.model.GetBlockResponse;
 import net.consensys.fleet.follower.rpc.client.FleetGetBlockClient;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -34,8 +36,12 @@ import org.hyperledger.besu.plugin.data.BlockContext;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionReceipt;
 import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BlockContextProvider {
+
+  private static final Logger LOG = LoggerFactory.getLogger(BlockContextProvider.class);
 
   private final Cache<CompositeBlockKey, FleetBlockContext> leaderBlock =
       CacheBuilder.newBuilder().maximumSize(20).expireAfterAccess(1, TimeUnit.MINUTES).build();
@@ -64,9 +70,7 @@ public class BlockContextProvider {
       }
 
       GetBlockResponse response =
-          getBlockClient
-              .sendData(new GetBlockRequest(blockNumber, fetchReceipts))
-              .get(50, TimeUnit.MILLISECONDS);
+          getBlockClient.sendData(new GetBlockRequest(blockNumber, fetchReceipts)).get();
 
       FleetBlockContext context =
           new FleetBlockContext(
@@ -78,6 +82,9 @@ public class BlockContextProvider {
       leaderBlock.put(key, context);
       return Optional.of(context);
     } catch (Exception e) {
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      LOG.info(sw.toString());
       return Optional.empty();
     }
   }

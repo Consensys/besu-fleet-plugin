@@ -49,7 +49,7 @@ public class FleetShipNewHeadServer implements PluginRpcMethod {
   @Override
   public Object execute(PluginRpcRequest rpcRequest) {
 
-    LOG.debug("execute {} request with body {}", getName(), rpcRequest.getParams());
+    LOG.info("execute {} request with body {}", getName(), rpcRequest.getParams());
 
     try {
       if (isRlpConverterReady()) {
@@ -66,7 +66,7 @@ public class FleetShipNewHeadServer implements PluginRpcMethod {
         newHeadObserver.onNewHead(newHeadParams);
       }
     } catch (Exception e) {
-      LOG.trace("Ignore invalid request for method {} with {}", getName(), rpcRequest.getParams());
+      LOG.info("Ignore invalid request for method {} with {}", getName(), rpcRequest.getParams());
     }
 
     return null;

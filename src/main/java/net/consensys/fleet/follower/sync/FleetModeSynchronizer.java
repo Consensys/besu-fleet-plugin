@@ -83,7 +83,7 @@ public class FleetModeSynchronizer {
       final SynchronizationService synchronizationService =
           pluginServiceProvider.getService(SynchronizationService.class);
       if (newHeadParams.getTrieLogRlp() != null) {
-        LOG.debug("add block to cache from leader {}", newHeadParams.getHead());
+        LOG.info("add block to cache from leader {}", newHeadParams.getHead());
         blockContextProvider.provideLeaderBlockContext(
             newHeadParams.getHead(),
             newHeadParams.getBlockBody(),
@@ -105,7 +105,7 @@ public class FleetModeSynchronizer {
         startSync();
       }
     } else {
-      LOG.debug("Blockchain service is not ready");
+      LOG.info("Blockchain service is not ready");
     }
   }
 
@@ -151,18 +151,18 @@ public class FleetModeSynchronizer {
                               .orElseThrow(MissingBlockException::new);
                       Hash targetBlockHash = targetBlock.getBlockHeader().getBlockHash();
 
-                      LOG.debug(
+                      LOG.info(
                           "New head (or leader block) being detected. {} ({})",
                           targetBlock.getBlockHeader().getNumber(),
                           targetBlock.getBlockHeader().getBlockHash());
-                      LOG.debug(
+                      LOG.info(
                           "Detected local chain head {} ({}",
                           chainHead.getNumber(),
                           chainHead.getBlockHash());
 
                       while (persistedBlock.getBlockHeader().getNumber()
                           > targetBlock.getBlockHeader().getNumber()) {
-                        LOG.debug("Rollback {}", persistedBlockHash);
+                        LOG.info("Rollback {}", persistedBlockHash);
                         rollBackward.add(
                             getLocalBlockContext(persistedBlock.getBlockHeader().getNumber())
                                 .orElseThrow());
@@ -174,7 +174,7 @@ public class FleetModeSynchronizer {
 
                       while (persistedBlock.getBlockHeader().getNumber()
                           < targetBlock.getBlockHeader().getNumber()) {
-                        LOG.debug("Rollforward {}", targetBlockHash);
+                        LOG.info("Rollforward {}", targetBlockHash);
                         final BlockContextProvider.FleetBlockContext toRollForwardBlock =
                             getLeaderBlockContext(targetBlock.getBlockHeader().getNumber())
                                 .orElseThrow(MissingBlockException::new);
@@ -197,8 +197,8 @@ public class FleetModeSynchronizer {
                       while (!persistedBlockHash.equals(targetBlockHash)) {
                         LOG.info("Reorg detected so we clean the cache");
                         blockContextProvider.clear();
-                        LOG.debug("Paired rollback {}", persistedBlockHash);
-                        LOG.debug("Paired rollforward {}", targetBlockHash);
+                        LOG.info("Paired rollback {}", persistedBlockHash);
+                        LOG.info("Paired rollforward {}", targetBlockHash);
 
                         rollForward.add(
                             getLeaderBlockContext(targetBlock.getBlockHeader().getNumber())
@@ -220,7 +220,7 @@ public class FleetModeSynchronizer {
                       }
 
                       for (BlockContextProvider.FleetBlockContext blockContext : rollBackward) {
-                        LOG.debug(
+                        LOG.info(
                             "Attempting rollback of {}",
                             blockContext.getBlockHeader().getBlockHash());
                         Optional<Bytes> maybeTrieLog = blockContext.trieLogRlp();
@@ -244,7 +244,7 @@ public class FleetModeSynchronizer {
                           Comparator.comparingLong(o -> o.getBlockHeader().getNumber()));
 
                       for (BlockContextProvider.FleetBlockContext blockContext : rollForward) {
-                        LOG.debug(
+                        LOG.info(
                             "Attempting rollforward of {}",
                             blockContext.getBlockHeader().getBlockHash());
                         // save trielog and set head
@@ -283,7 +283,7 @@ public class FleetModeSynchronizer {
                           .getBlockHeader()
                           .getBlockHash()
                           .equals(chainHead.getBlockHash())) {
-                        LOG.debug("head not changed {}", chainHead.getBlockHash());
+                        LOG.info("head not changed {}", chainHead.getBlockHash());
                       } else if (Math.abs(
                               newHead.getBlockHeader().getNumber()
                                   - oldHead.getBlockHeader().getNumber())
@@ -323,7 +323,7 @@ public class FleetModeSynchronizer {
     if (synchronizationService.isInitialSyncPhaseDone()) {
       if (isWaitingForSync.getAndSet(false)) {
         final P2PService p2PService = pluginServiceProvider.getService(P2PService.class);
-        LOG.debug("Disable P2P discovery");
+        LOG.info("Disable P2P discovery");
         p2PService.disableDiscovery();
       }
     }

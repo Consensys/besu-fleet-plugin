@@ -46,7 +46,7 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
 
   @Override
   public void onBlockAdded(final AddedBlockContext addedBlockContext) {
-    LOG.atDebug()
+    LOG.atInfo()
         .setMessage("New block added: {}")
         .addArgument(() -> addedBlockContext.getBlockHeader().getBlockHash())
         .log();
@@ -70,6 +70,7 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
             .getRawTrieLogLayer(headBlockContext.getBlockHeader().getBlockHash())
             .map(Bytes::toHexString);
     if (maybeTrielog.isEmpty()) {
+      LOG.info("send new block {}", maybeTrielog.isEmpty());
       return new NewHeadParams(headBlockContext.getBlockHeader(), safeBlock, finalizedBlock);
     } else {
       return new NewHeadParams(

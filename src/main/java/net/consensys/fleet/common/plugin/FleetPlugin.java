@@ -89,11 +89,11 @@ public class FleetPlugin implements BesuPlugin {
     }
     cmdlineOptions.get().addPicoCLIOptions(NAME, CLI_OPTIONS);
 
-    LOG.debug("Creating peer manager");
+    LOG.info("Creating peer manager");
     peerManagers = new PeerNodesManager();
     this.webClient = new WebClientWrapper(convertMapperProvider, peerManagers);
 
-    LOG.debug("Setting up RPC endpoints");
+    LOG.info("Setting up RPC endpoints");
     final List<PluginRpcMethod> pluginRpcMethods = createServerMethods();
     serviceManager
         .getService(RpcEndpointService.class)
@@ -109,7 +109,7 @@ public class FleetPlugin implements BesuPlugin {
                           method.getNamespace(), method.getName(), method::execute);
                     }));
 
-    LOG.debug("Registering trieLog service");
+    LOG.info("Registering trieLog service");
     final TrieLogService trieLogService = new FleetTrieLogService();
     serviceManager.addService(TrieLogService.class, trieLogService);
     pluginServiceProvider.provideService(TrieLogService.class, () -> trieLogService);
@@ -118,7 +118,7 @@ public class FleetPlugin implements BesuPlugin {
   @Override
   public void start() {
 
-    LOG.debug("Loading RLP converter service");
+    LOG.info("Loading RLP converter service");
     final RlpConverterService rlpConverterService =
         serviceManager
             .getService(RlpConverterService.class)
@@ -128,7 +128,7 @@ public class FleetPlugin implements BesuPlugin {
                         "Expecting a RLP converter service, but none found."));
     pluginServiceProvider.provideService(RlpConverterService.class, () -> rlpConverterService);
 
-    LOG.debug("Loading blockchain service");
+    LOG.info("Loading blockchain service");
     final BlockchainService blockchainService =
         serviceManager
             .getService(BlockchainService.class)
@@ -136,7 +136,7 @@ public class FleetPlugin implements BesuPlugin {
                 () -> new IllegalStateException("Expecting a blockchain service, but none found."));
     pluginServiceProvider.provideService(BlockchainService.class, () -> blockchainService);
 
-    LOG.debug("Loading synchronization service");
+    LOG.info("Loading synchronization service");
     final SynchronizationService synchronizationService =
         serviceManager
             .getService(SynchronizationService.class)
@@ -147,7 +147,7 @@ public class FleetPlugin implements BesuPlugin {
     pluginServiceProvider.provideService(
         SynchronizationService.class, () -> synchronizationService);
 
-    LOG.debug("Loading P2P network service");
+    LOG.info("Loading P2P network service");
     final P2PService p2PService =
         serviceManager
             .getService(P2PService.class)
@@ -176,7 +176,7 @@ public class FleetPlugin implements BesuPlugin {
   }
 
   private void createPeerNetworkMaintainer() {
-    LOG.debug("Setting up connection parameters");
+    LOG.info("Setting up connection parameters");
     final PeerNetworkMaintainer peerNetworkMaintainer;
     switch (CLI_OPTIONS.getNodeRole()) {
       case LEADER -> {
@@ -294,7 +294,7 @@ public class FleetPlugin implements BesuPlugin {
   }
 
   private void disableTransactionPool() {
-    LOG.debug("Disable transaction pool");
+    LOG.info("Disable transaction pool");
     serviceManager
         .getService(TransactionPoolService.class)
         .ifPresent(TransactionPoolService::disableTransactionPool);
