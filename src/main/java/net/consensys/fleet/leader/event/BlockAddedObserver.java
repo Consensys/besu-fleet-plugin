@@ -21,8 +21,9 @@ import net.consensys.fleet.leader.rpc.client.FleetShipNewHeadClient;
 import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.data.AddedBlockContext;
+import org.hyperledger.besu.plugin.data.BlockContext;
+import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionReceipt;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -59,10 +60,18 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
 
   private NewHeadParams buildNewHeadEvent(final AddedBlockContext headBlockContext) {
     final BlockchainService service = pluginServiceProvider.getService(BlockchainService.class);
-    final Hash safeBlock =
-        service.getSafeBlock().orElse(headBlockContext.getBlockHeader().getBlockHash());
-    final Hash finalizedBlock =
-        service.getFinalizedBlock().orElse(headBlockContext.getBlockHeader().getBlockHash());
+    final BlockHeader safeBlock =
+        service
+            .getSafeBlock()
+            .flatMap(service::getBlockByHash)
+            .map(BlockContext::getBlockHeader)
+            .orElse(headBlockContext.getBlockHeader());
+    final BlockHeader finalizedBlock =
+        service
+            .getFinalizedBlock()
+            .flatMap(service::getBlockByHash)
+            .map(BlockContext::getBlockHeader)
+            .orElse(headBlockContext.getBlockHeader());
     final TrieLogProvider trieLogProvider =
         pluginServiceProvider.getService(TrieLogService.class).getTrieLogProvider();
     final Optional<String> maybeTrielog =
@@ -70,8 +79,12 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
             .getRawTrieLogLayer(headBlockContext.getBlockHeader().getBlockHash())
             .map(Bytes::toHexString);
     if (maybeTrielog.isEmpty()) {
-      LOG.info("send new block {}", maybeTrielog.isEmpty());
-      return new NewHeadParams(headBlockContext.getBlockHeader(), safeBlock, finalizedBlock);
+      return new NewHeadParams(
+          headBlockContext.getBlockHeader(),
+          safeBlock.getBlockHash(),
+          safeBlock.getNumber(),
+          finalizedBlock.getBlockHash(),
+          finalizedBlock.getNumber());
     } else {
       return new NewHeadParams(
           headBlockContext.getBlockHeader(),
@@ -80,8 +93,10 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
               .map(TransactionReceipt.class::cast)
               .toList(),
           maybeTrielog.get(),
-          safeBlock,
-          finalizedBlock);
+          safeBlock.getBlockHash(),
+          safeBlock.getNumber(),
+          finalizedBlock.getBlockHash(),
+          finalizedBlock.getNumber());
     }
   }
 }

@@ -15,24 +15,25 @@
 package net.consensys.fleet.common.rpc.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.hyperledger.besu.datatypes.Hash;
 
 public class GetBlockRequest {
 
-  @JsonProperty("blockNumber")
-  private Long blockNumber;
+  @JsonProperty("blockHash")
+  private Hash blockHash;
 
   @JsonProperty("fetchReceipts")
   private boolean fetchReceipts;
 
   public GetBlockRequest() {}
 
-  public GetBlockRequest(final Long blockNumber, final boolean fetchReceipts) {
-    this.blockNumber = blockNumber;
+  public GetBlockRequest(final Hash blockHash, final boolean fetchReceipts) {
+    this.blockHash = blockHash;
     this.fetchReceipts = fetchReceipts;
   }
 
-  public Long getBlockNumber() {
-    return blockNumber;
+  public Hash getBlockHash() {
+    return blockHash;
   }
 
   public boolean isFetchReceipts() {

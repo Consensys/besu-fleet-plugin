@@ -17,6 +17,7 @@ package net.consensys.fleet.follower.sync;
 import net.consensys.fleet.common.plugin.PluginServiceProvider;
 import net.consensys.fleet.common.rpc.model.GetBlockRequest;
 import net.consensys.fleet.common.rpc.model.GetBlockResponse;
+import net.consensys.fleet.common.rpc.model.NewHeadParams;
 import net.consensys.fleet.follower.rpc.client.FleetGetBlockClient;
 
 import java.io.PrintWriter;
@@ -59,18 +60,19 @@ public class BlockContextProvider {
   }
 
   public Optional<FleetBlockContext> getLeaderBlockContextByNumber(
-      final long blockNumber, final boolean fetchReceipts) {
+      final CompositeBlockKey compositeBlockKey, final boolean fetchReceipts) {
     try {
-      CompositeBlockKey key = new CompositeBlockKey(blockNumber);
       Optional<FleetBlockContext> cachedContext =
-          Optional.ofNullable(leaderBlock.getIfPresent(key));
+          Optional.ofNullable(leaderBlock.getIfPresent(compositeBlockKey));
 
       if (cachedContext.isPresent()) {
         return cachedContext;
       }
 
       GetBlockResponse response =
-          getBlockClient.sendData(new GetBlockRequest(blockNumber, fetchReceipts)).get();
+          getBlockClient
+              .sendData(new GetBlockRequest(compositeBlockKey.getBlockHash(), fetchReceipts))
+              .get();
 
       FleetBlockContext context =
           new FleetBlockContext(
@@ -79,7 +81,7 @@ public class BlockContextProvider {
               response.getReceipts(),
               Optional.of(Bytes.fromHexString(response.getTrieLogRlp())));
 
-      leaderBlock.put(key, context);
+      leaderBlock.put(new CompositeBlockKey(response.getBlockHeader()), context);
       return Optional.of(context);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
@@ -89,19 +91,15 @@ public class BlockContextProvider {
     }
   }
 
-  public void provideLeaderBlockContext(
-      final BlockHeader blockHeader,
-      final BlockBody blockBody,
-      final List<TransactionReceipt> receipts,
-      final String trieLogRlp) {
-
-    CompositeBlockKey key =
-        new CompositeBlockKey(blockHeader.getNumber(), blockHeader.getBlockHash());
-    FleetBlockContext context =
+  public void provideLeaderBlockContext(final NewHeadParams newHeadParams) {
+    CompositeBlockKey key = new CompositeBlockKey(newHeadParams.getHead());
+    leaderBlock.put(
+        key,
         new FleetBlockContext(
-            blockHeader, blockBody, receipts, Optional.of(Bytes.fromHexString(trieLogRlp)));
-
-    leaderBlock.put(key, context);
+            newHeadParams.getHead(),
+            newHeadParams.getBlockBody(),
+            newHeadParams.getReceipts(),
+            Optional.of(Bytes.fromHexString(newHeadParams.getTrieLogRlp()))));
   }
 
   public Optional<FleetBlockContext> getLocalBlockContextByNumber(
@@ -148,7 +146,7 @@ public class BlockContextProvider {
 
   public static class CompositeBlockKey {
 
-    private long blockNumber;
+    private final long blockNumber;
     private Hash blockHash;
 
     public CompositeBlockKey(final long blockNumber, final Hash blockHash) {
@@ -160,8 +158,17 @@ public class BlockContextProvider {
       this.blockNumber = blockNumber;
     }
 
-    public CompositeBlockKey(final Hash blockHash) {
-      this.blockHash = blockHash;
+    public CompositeBlockKey(final BlockHeader blockHeader) {
+      this.blockNumber = blockHeader.getNumber();
+      this.blockHash = blockHeader.getBlockHash();
+    }
+
+    public long getBlockNumber() {
+      return blockNumber;
+    }
+
+    public Hash getBlockHash() {
+      return blockHash;
     }
 
     @Override

@@ -36,11 +36,17 @@ public class NewHeadParams {
   @JsonProperty("headTrieLogRlp")
   private String trieLogRlp;
 
-  @JsonProperty("safeBlock")
-  private Hash safeBlock;
+  @JsonProperty("safeBlockHash")
+  private Hash safeBlockHash;
 
-  @JsonProperty("finalizedBlock")
-  private Hash finalizedBlock;
+  @JsonProperty("safeBlockNumber")
+  private long safeBlockNumber;
+
+  @JsonProperty("finalizedBlockHash")
+  private Hash finalizedBlockHash;
+
+  @JsonProperty("finalizedBlockNumber")
+  private long finalizedBlockNumber;
 
   public NewHeadParams() {}
 
@@ -49,19 +55,30 @@ public class NewHeadParams {
       final BlockBody blockBody,
       final List<TransactionReceipt> receipts,
       final String trieLogRlp,
-      final Hash safeBlock,
-      final Hash finalizedBlock) {
+      final Hash safeBlockHash,
+      final long safeBlockNumber,
+      final Hash finalizedBlockHash,
+      final long finalizedBlockNumber) {
     this.head = head;
     this.blockBody = blockBody;
     this.receipts = receipts;
     this.trieLogRlp = trieLogRlp;
-    this.safeBlock = safeBlock;
-    this.finalizedBlock = finalizedBlock;
+    this.safeBlockHash = safeBlockHash;
+    this.safeBlockNumber = safeBlockNumber;
+    this.finalizedBlockHash = finalizedBlockHash;
+    this.finalizedBlockNumber = finalizedBlockNumber;
   }
 
-  public NewHeadParams(final BlockHeader head, final Hash safeBlock, final Hash finalizedBlock) {
-    this.safeBlock = safeBlock;
-    this.finalizedBlock = finalizedBlock;
+  public NewHeadParams(
+      final BlockHeader head,
+      final Hash safeBlockHash,
+      final long safeBlockNumber,
+      final Hash finalizedBlockHash,
+      final long finalizedBlockNumber) {
+    this.safeBlockHash = safeBlockHash;
+    this.safeBlockNumber = safeBlockNumber;
+    this.finalizedBlockHash = finalizedBlockHash;
+    this.finalizedBlockNumber = finalizedBlockNumber;
     this.head = head;
   }
 
@@ -81,11 +98,19 @@ public class NewHeadParams {
     return trieLogRlp;
   }
 
-  public Hash getSafeBlock() {
-    return safeBlock;
+  public Hash getSafeBlockHash() {
+    return safeBlockHash;
   }
 
-  public Hash getFinalizedBlock() {
-    return finalizedBlock;
+  public long getSafeBlockNumber() {
+    return safeBlockNumber;
+  }
+
+  public Hash getFinalizedBlockHash() {
+    return finalizedBlockHash;
+  }
+
+  public long getFinalizedBlockNumber() {
+    return finalizedBlockNumber;
   }
 }

@@ -27,6 +27,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.data.BlockContext;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionReceipt;
@@ -68,9 +69,8 @@ public class FleetGetBlockServer implements PluginRpcMethod {
       try {
         final GetBlockRequest getBlockRequest =
             OBJECT_MAPPER.readValue(rpcRequest.getParams()[0].toString(), GetBlockRequest.class);
-        final long blockNumber = getBlockRequest.getBlockNumber();
-        final Optional<BlockContext> blockByNumber =
-            blockchainService.getBlockByNumber(blockNumber);
+        final Hash blockHash = getBlockRequest.getBlockHash();
+        final Optional<BlockContext> blockByNumber = blockchainService.getBlockByHash(blockHash);
         if (blockByNumber.isPresent()) {
           final BlockHeader blockHeader = blockByNumber.get().getBlockHeader();
           final List<TransactionReceipt> receipts;
