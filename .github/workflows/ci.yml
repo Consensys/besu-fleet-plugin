@@ -48,6 +48,7 @@ jobs:
           path: |
             ./
             !./.git/**
+          retention-days: 5
 
   unitTests:
     needs: assemble
@@ -87,5 +88,5 @@ jobs:
       - name: Store distribution artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: distributions
-          path: build/distributions
+          name: jar
+          path: 'build/libs/'
