@@ -51,6 +51,7 @@ jobs:
         with:
           name: fleet
           path: 'build/libs/'
+          retention-days: 5
           
   besu:
     runs-on: ubuntu-latest
