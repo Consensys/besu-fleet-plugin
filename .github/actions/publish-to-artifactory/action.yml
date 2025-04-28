@@ -1,6 +1,6 @@
 ---
-name: 'publish-to-nexus'
-description: 'Composite action to publish to nexus'
+name: 'publish-to-artifactory'
+description: 'Composite action to publish to artifactory'
 inputs:
   publish-version:
     description: 'version to publish with'

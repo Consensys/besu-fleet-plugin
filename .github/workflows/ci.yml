@@ -90,7 +90,7 @@ jobs:
           name: jar
           path: 'build/libs/'
 
-  publishToNexus:
+  publishToArtifactory:
     needs: 
       - assemble
       - unitTests
@@ -120,8 +120,8 @@ jobs:
         id: project_version
         uses: ConsenSys/github-actions/java-get-project-version@main
 
-      - name: Publish to Nexus
+      - name: Publish to artifactory
         if: "!startsWith(github.ref, 'refs/tags/')"
-        uses: ./.github/actions/publish-to-nexus
+        uses: ./.github/actions/publish-to-artifactory
         with:
           publish-version: ${{ steps.project_version.outputs.specific-version }}
