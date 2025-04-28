@@ -16,15 +16,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4.2.1
+      - name: Setup Java and Gradle
+        id: setup-java-gradle
+        uses: ConsenSys/github-actions/java-setup-gradle@main
         with:
-          java-version: '21'
-          distribution: 'adopt'
-          cache: 'gradle'
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+          DISTRIBUTION: 'adopt'
 
       - name: Get the version
         id: get_version
@@ -54,19 +50,9 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true          
           files: ./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar
-          
-      - name: Authneticate JFrog
-        id: jfrog
-        uses: jfrog/setup-jfrog-cli@v4
-        env:
-          JF_URL: "https://consensys.jfrog.io"
-        with:
-          oidc-provider-name: 'github'
-          oidc-audience: ''
 
-      - name: Publish Artifactory
-        id: artifactory
-        run: ./gradlew artifactoryPublish -PreleaseVersion=${{ steps.get_version.outputs.VERSION }}
-        env:
-          ARTIFACTORY_USER: ${{ steps.jfrog.outputs.oidc-user }}
-          ARTIFACTORY_PASSWORD: ${{ steps.jfrog.outputs.oidc-token }}
+      - name: Publish to Nexus
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: ./.github/actions/publish-to-nexus
+        with:
+          publish-version: ${{ steps.get_version.outputs.VERSION }}

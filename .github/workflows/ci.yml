@@ -55,7 +55,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,3 +89,39 @@ jobs:
         with:
           name: jar
           path: 'build/libs/'
+
+  publishToNexus:
+    needs: 
+      - assemble
+      - unitTests
+    runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
+    environment: publish
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java and Gradle
+        id: setup-java-gradle
+        uses: ConsenSys/github-actions/java-setup-gradle@main
+        with:
+          DISTRIBUTION: 'adopt'
+
+      - name: Download workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace
+
+      - name: Determine version
+        id: project_version
+        uses: ConsenSys/github-actions/java-get-project-version@main
+
+      - name: Publish to Nexus
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: ./.github/actions/publish-to-nexus
+        with:
+          publish-version: ${{ steps.project_version.outputs.specific-version }}

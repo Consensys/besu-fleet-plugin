@@ -1,0 +1,31 @@
+---
+name: 'publish-to-nexus'
+description: 'Composite action to publish to nexus'
+inputs:
+  publish-version:
+    description: 'version to publish with'
+    required: true
+    
+runs:
+  using: "composite"
+  steps:
+
+    - name: Authneticate JFrog
+      id: jfrog
+      if: "!startsWith(github.ref, 'refs/tags/')"
+      uses: jfrog/setup-jfrog-cli@v4
+      env:
+        JF_URL: "https://consensys.jfrog.io"
+      with:
+        oidc-provider-name: 'github'
+        oidc-audience: ''
+
+    - name: Publish Artifactory
+      id: artifactory
+      if: "!startsWith(github.ref, 'refs/tags/')"
+      shell: sh
+      run: |      
+        ./gradlew artifactoryPublish -PreleaseVersion=${{ inputs.publish-version }}
+      env:
+        ARTIFACTORY_USER: ${{ steps.jfrog.outputs.oidc-user }}
+        ARTIFACTORY_PASSWORD: ${{ steps.jfrog.outputs.oidc-token }}
