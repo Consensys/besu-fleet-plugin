@@ -235,6 +235,12 @@ task plugin(dependsOn: 'jar') {
     description 'Alias for the jar task'
 }
 
+task printVersion() {
+  doFirst {
+    println "specific-version=${calculateVersion()}"
+    println "publish-version=${project.version}"
+  }
+}
 
 @Memoized
 def calculateVersion() {
