@@ -245,9 +245,7 @@ task printVersion() {
 @Memoized
 def calculateVersion() {
     String version = rootProject.version
-    if (version.endsWith("-SNAPSHOT")) {
-        version = version.replace("-SNAPSHOT", "-dev-" + getCheckedOutGitCommitHash())
-    }
+    version = version.replace("develop", "develop-" + getCheckedOutGitCommitHash())
     return version
 }
 
