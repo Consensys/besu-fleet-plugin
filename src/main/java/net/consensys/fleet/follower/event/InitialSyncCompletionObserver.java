@@ -38,7 +38,7 @@ public class InitialSyncCompletionObserver implements BesuEvents.InitialSyncComp
       fleetModeSynchronizerSupplier.get().disableP2P();
       fleetModeSynchronizerSupplier.get().disableTrie();
     } else {
-      LOG.info("Cannot disable initial sync because fleet mode synchronizer is not ready");
+      LOG.debug("Cannot disable initial sync because fleet mode synchronizer is not ready");
     }
   }
 

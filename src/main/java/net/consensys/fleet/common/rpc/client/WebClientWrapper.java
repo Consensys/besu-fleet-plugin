@@ -70,12 +70,11 @@ public class WebClientWrapper {
             jsonObject,
             event -> {
               if (event.failed()) {
-                LOG.info("event failed {}", String.valueOf(event.cause()));
                 completableFuture.completeExceptionally(event.cause());
               } else {
                 completableFuture.complete(event.result());
               }
-              LOG.info(
+              LOG.trace(
                   "Send RPC request {} result {} for body {} {}",
                   methodName,
                   event.succeeded(),
@@ -105,7 +104,7 @@ public class WebClientWrapper {
                   .sendJsonObject(
                       jsonObject,
                       event -> {
-                        LOG.info(
+                        LOG.trace(
                             "Send RPC request {} to {} result {} for body {}",
                             methodName,
                             peerNode,

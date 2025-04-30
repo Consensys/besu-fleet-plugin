@@ -60,7 +60,7 @@ public class FleetGetBlockServer implements PluginRpcMethod {
 
   @Override
   public Object execute(PluginRpcRequest rpcRequest) {
-    LOG.info("execute {} request with body {}", getName(), rpcRequest.getParams());
+    LOG.debug("execute {} request with body {}", getName(), rpcRequest.getParams());
     if (isBlockchainServiceReady() && rpcRequest.getParams().length > 0) {
       final BlockchainService blockchainService =
           pluginServiceProvider.getService(BlockchainService.class);
@@ -96,7 +96,8 @@ public class FleetGetBlockServer implements PluginRpcMethod {
         }
 
       } catch (JsonProcessingException e) {
-        LOG.info("Ignore invalid request for method {} with {}", getName(), rpcRequest.getParams());
+        LOG.trace(
+            "Ignore invalid request for method {} with {}", getName(), rpcRequest.getParams());
       }
       return null;
     }

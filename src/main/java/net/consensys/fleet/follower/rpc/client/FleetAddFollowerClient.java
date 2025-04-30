@@ -18,19 +18,13 @@ import net.consensys.fleet.common.rpc.client.AbstractStateRpcSender;
 import net.consensys.fleet.common.rpc.client.WebClientWrapper;
 import net.consensys.fleet.common.rpc.model.PeerNode;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class FleetAddFollowerClient extends AbstractStateRpcSender<PeerNode, Boolean> {
-
-  private static final Logger LOG = LoggerFactory.getLogger(FleetAddFollowerClient.class);
 
   private static final String METHOD_NAME = "fleet_addFollowerNode";
 
@@ -63,12 +57,6 @@ public class FleetAddFollowerClient extends AbstractStateRpcSender<PeerNode, Boo
     if (throwable == null && response.statusCode() == 200) {
       return !response.bodyAsJsonObject().containsKey("error");
     }
-    if (throwable != null) {
-      StringWriter sw = new StringWriter();
-      throwable.printStackTrace(new PrintWriter(sw));
-      LOG.info(sw.toString());
-    }
-    LOG.info("is connect {}", response.statusCode());
     return false;
   }
 }

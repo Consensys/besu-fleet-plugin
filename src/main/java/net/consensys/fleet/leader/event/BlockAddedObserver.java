@@ -22,7 +22,6 @@ import java.util.Optional;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.plugin.data.AddedBlockContext;
-import org.hyperledger.besu.plugin.data.BlockContext;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionReceipt;
 import org.hyperledger.besu.plugin.services.BesuEvents;
@@ -47,30 +46,32 @@ public class BlockAddedObserver implements BesuEvents.BlockAddedListener {
 
   @Override
   public void onBlockAdded(final AddedBlockContext addedBlockContext) {
-    LOG.atInfo()
-        .setMessage("New block added: {}")
-        .addArgument(() -> addedBlockContext.getBlockHeader().getBlockHash())
-        .log();
     if (pluginServiceProvider.isServiceAvailable(BlockchainService.class)) {
-      stateShipNewHeadSender.sendData(buildNewHeadEvent(addedBlockContext));
+      final BlockchainService service = pluginServiceProvider.getService(BlockchainService.class);
+      if (service.getChainHeadHash().equals(addedBlockContext.getBlockHeader().getBlockHash())) {
+        // only notify when the head is updated
+        LOG.atDebug()
+            .setMessage("New head received: {}")
+            .addArgument(() -> addedBlockContext.getBlockHeader().getBlockHash())
+            .log();
+        stateShipNewHeadSender.sendData(buildNewHeadEvent(service, addedBlockContext));
+      }
     } else {
       LOG.error("BlockchainService is not available");
     }
   }
 
-  private NewHeadParams buildNewHeadEvent(final AddedBlockContext headBlockContext) {
-    final BlockchainService service = pluginServiceProvider.getService(BlockchainService.class);
+  private NewHeadParams buildNewHeadEvent(
+      final BlockchainService service, final AddedBlockContext headBlockContext) {
     final BlockHeader safeBlock =
         service
             .getSafeBlock()
-            .flatMap(service::getBlockByHash)
-            .map(BlockContext::getBlockHeader)
+            .flatMap(service::getBlockHeaderByHash)
             .orElse(headBlockContext.getBlockHeader());
     final BlockHeader finalizedBlock =
         service
             .getFinalizedBlock()
-            .flatMap(service::getBlockByHash)
-            .map(BlockContext::getBlockHeader)
+            .flatMap(service::getBlockHeaderByHash)
             .orElse(headBlockContext.getBlockHeader());
     final TrieLogProvider trieLogProvider =
         pluginServiceProvider.getService(TrieLogService.class).getTrieLogProvider();

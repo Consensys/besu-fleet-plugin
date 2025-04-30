@@ -19,17 +19,11 @@ import net.consensys.fleet.common.rpc.client.WebClientWrapper;
 import net.consensys.fleet.common.rpc.model.GetBlockRequest;
 import net.consensys.fleet.common.rpc.model.GetBlockResponse;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class FleetGetBlockClient extends AbstractStateRpcSender<GetBlockRequest, GetBlockResponse> {
-
-  private static final Logger LOG = LoggerFactory.getLogger(FleetGetBlockClient.class);
 
   private static final String METHOD_NAME = "fleet_getBlock";
 
@@ -55,17 +49,9 @@ public class FleetGetBlockClient extends AbstractStateRpcSender<GetBlockRequest,
                     completableFuture.complete(
                         webClient.decode(result, "result", GetBlockResponse.class));
                   } catch (JsonProcessingException e) {
-                    StringWriter sw = new StringWriter();
-                    e.printStackTrace(new PrintWriter(sw));
-                    LOG.info(sw.toString());
                     completableFuture.completeExceptionally(e);
                   }
                 } else {
-
-                  LOG.info("get leader error");
-                  StringWriter sw = new StringWriter();
-                  throwable.printStackTrace(new PrintWriter(sw));
-                  LOG.info(sw.toString());
                   completableFuture.completeExceptionally(throwable);
                 }
               });
