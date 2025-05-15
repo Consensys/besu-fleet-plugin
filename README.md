@@ -35,6 +35,8 @@ Or, run the besu with follower mode:
 --Xchain-pruning-blocks-retained=512 \
 --plugin-fleet-leader-http-host=127.0.0.1 \
 --plugin-fleet-leader-http-port=8545
+--plugin-fleet-follower-http-host=127.0.0.1 \
+--plugin-fleet-follower-http-port=8888
 ```
 
 # Download

@@ -64,6 +64,7 @@ public class WebClientWrapper {
 
     webClient
         .post(leader.port(), leader.host(), endpoint)
+        .timeout(100)
         .putHeader("Content-Type", CONTENT_TYPE)
         .sendJsonObject(
             jsonObject,
@@ -98,6 +99,7 @@ public class WebClientWrapper {
             peerNode -> {
               webClient
                   .post(peerNode.port(), peerNode.host(), endpoint)
+                  .timeout(100)
                   .putHeader("Content-Type", CONTENT_TYPE)
                   .sendJsonObject(
                       jsonObject,
