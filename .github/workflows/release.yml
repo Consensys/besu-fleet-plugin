@@ -16,15 +16,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4.2.1
+      - name: Setup Java and Gradle
+        id: setup-java-gradle
+        uses: ConsenSys/github-actions/java-setup-gradle@main
         with:
-          java-version: '21'
-          distribution: 'adopt'
-          cache: 'gradle'
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+          DISTRIBUTION: 'adopt'
 
       - name: Get the version
         id: get_version
@@ -36,41 +32,27 @@ jobs:
       - name: Test with Gradle
         run: ./gradlew test
 
-      - name: Draft Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: 'Release of version ${{ steps.get_version.outputs.VERSION }}.'
-          draft: false
-          prerelease: false
+      - name: Create release notes
+        run: |
+          echo "## Release ${{ github.ref_name }}" > output.md
+          echo "./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar" >> output.md
+          echo "SHA256: $(sha256sum ./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar | awk '{ print $1 }' )" >> output.md
+          echo "" >> output.md
 
       - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
+        id: release_publish
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar
-          asset_name: besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar
-          asset_content_type: application/octet-stream
+          name: Release ${{ github.ref_name }}
+          body_path: output.md
+          generate_release_notes: true
+          fail_on_unmatched_files: true          
+          files: ./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar
 
-      - name: Authneticate JFrog
-        id: jfrog
-        uses: jfrog/setup-jfrog-cli@v4
-        env:
-          JF_URL: "https://consensys.jfrog.io"
+      - name: Publish to artifactory
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: ./.github/actions/publish-to-artifactory
         with:
-          oidc-provider-name: 'github'
-          oidc-audience: ''
-
-      - name: Publish Artifactory
-        id: artifactory
-        run: ./gradlew artifactoryPublish -PreleaseVersion=${{ steps.get_version.outputs.VERSION }}
-        env:
-          ARTIFACTORY_USER: ${{ steps.jfrog.outputs.oidc-user }}
-          ARTIFACTORY_PASSWORD: ${{ steps.jfrog.outputs.oidc-token }}
+          publish-version: ${{ steps.get_version.outputs.VERSION }}
