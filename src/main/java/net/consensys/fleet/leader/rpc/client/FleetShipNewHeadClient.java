@@ -34,16 +34,11 @@ public class FleetShipNewHeadClient extends AbstractStateRpcSender<NewHeadParams
   }
 
   @Override
-  protected String getMethodeName() {
-    return METHOD_NAME;
-  }
-
-  @Override
   public CompletableFuture<Boolean> sendData(final NewHeadParams data) {
     LOG.debug("Sending new head to followers");
     final CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
     try {
-      webClient.sendToFollowers(ENDPOINT, getMethodeName(), data);
+      webClient.sendToFollowers(ENDPOINT, METHOD_NAME, data);
       completableFuture.complete(true);
     } catch (JsonProcessingException e) {
       LOG.error("Error sending new head to followers", e);

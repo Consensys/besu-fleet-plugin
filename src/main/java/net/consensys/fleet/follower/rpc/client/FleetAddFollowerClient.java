@@ -33,16 +33,11 @@ public class FleetAddFollowerClient extends AbstractStateRpcSender<PeerNode, Boo
   }
 
   @Override
-  protected String getMethodeName() {
-    return METHOD_NAME;
-  }
-
-  @Override
   public CompletableFuture<Boolean> sendData(PeerNode data) {
     final CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
     try {
       webClient
-          .sendToLeader(ENDPOINT, getMethodeName(), data)
+          .sendToLeader(ENDPOINT, METHOD_NAME, data)
           .whenComplete(
               (bufferHttpResponse, throwable) -> {
                 completableFuture.complete(isConnected(bufferHttpResponse, throwable));

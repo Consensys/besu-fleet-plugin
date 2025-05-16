@@ -33,7 +33,8 @@ import net.consensys.fleet.leader.event.BlockAddedObserver;
 import net.consensys.fleet.leader.peer.LeaderPeerNetworkMaintainer;
 import net.consensys.fleet.leader.rpc.client.FleetShipNewHeadClient;
 import net.consensys.fleet.leader.rpc.server.FleetAddFollowerServer;
-import net.consensys.fleet.leader.rpc.server.FleetGetBlockServer;
+import net.consensys.fleet.leader.rpc.server.FleetGetBlockByHashServer;
+import net.consensys.fleet.leader.rpc.server.FleetGetBlockByNumberServer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -237,7 +238,8 @@ public class FleetPlugin implements BesuPlugin {
         new BlockContextProvider(pluginServiceProvider, new FleetGetBlockClient(webClient));
     methods.add(new FleetGetConfigServer(convertMapperProvider));
     methods.add(new FleetAddFollowerServer(peerManagers));
-    methods.add(new FleetGetBlockServer(convertMapperProvider, pluginServiceProvider));
+    methods.add(new FleetGetBlockByHashServer(convertMapperProvider, pluginServiceProvider));
+    methods.add(new FleetGetBlockByNumberServer(convertMapperProvider, pluginServiceProvider));
     fleetModeSynchronizer =
         new FleetModeSynchronizer(
             pluginServiceProvider,
