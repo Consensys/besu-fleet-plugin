@@ -93,7 +93,7 @@ public class FleetModeSynchronizer {
           newHeadParams.getSafeBlockHash(),
           newHeadParams.getFinalizedBlockHash());
       LOG.debug(
-          "Fire fork choice 2 for safe block {} and finalized block {} ",
+          "Fire fork choice for safe block {} and finalized block {} ",
           newHeadParams.getSafeBlockHash(),
           newHeadParams.getFinalizedBlockHash());
       if (isWaitingForSync.get()) {

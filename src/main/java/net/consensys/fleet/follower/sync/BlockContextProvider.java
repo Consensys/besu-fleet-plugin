@@ -15,6 +15,7 @@
 package net.consensys.fleet.follower.sync;
 
 import net.consensys.fleet.common.plugin.PluginServiceProvider;
+import net.consensys.fleet.common.rpc.model.AbstractGetBlockRequest;
 import net.consensys.fleet.common.rpc.model.GetBlockByHashRequest;
 import net.consensys.fleet.common.rpc.model.GetBlockByNumberRequest;
 import net.consensys.fleet.common.rpc.model.GetBlockResponse;
@@ -54,8 +55,8 @@ public class BlockContextProvider {
     this.getBlockClient = getBlockClient;
   }
 
-  public Optional<FleetBlockContext> getLeaderBlockContextByHash(
-      final CompositeBlockKey compositeBlockKey, final boolean fetchReceipts) {
+  private Optional<FleetBlockContext> getLeaderBlockContext(
+      final CompositeBlockKey compositeBlockKey, AbstractGetBlockRequest request) {
     try {
       Optional<FleetBlockContext> cachedContext =
           Optional.ofNullable(leaderBlock.getIfPresent(compositeBlockKey));
@@ -64,10 +65,7 @@ public class BlockContextProvider {
         return cachedContext;
       }
 
-      GetBlockResponse response =
-          getBlockClient
-              .sendData(new GetBlockByHashRequest(compositeBlockKey.getBlockHash(), fetchReceipts))
-              .get();
+      GetBlockResponse response = getBlockClient.sendData(request).get();
 
       FleetBlockContext context =
           new FleetBlockContext(
@@ -83,34 +81,18 @@ public class BlockContextProvider {
     }
   }
 
+  public Optional<FleetBlockContext> getLeaderBlockContextByHash(
+      final CompositeBlockKey compositeBlockKey, final boolean fetchReceipts) {
+    return getLeaderBlockContext(
+        compositeBlockKey,
+        new GetBlockByHashRequest(compositeBlockKey.getBlockHash(), fetchReceipts));
+  }
+
   public Optional<FleetBlockContext> getLeaderBlockContextByNumber(
       final CompositeBlockKey compositeBlockKey, final boolean fetchReceipts) {
-    try {
-      Optional<FleetBlockContext> cachedContext =
-          Optional.ofNullable(leaderBlock.getIfPresent(compositeBlockKey));
-
-      if (cachedContext.isPresent()) {
-        return cachedContext;
-      }
-
-      GetBlockResponse response =
-          getBlockClient
-              .sendData(
-                  new GetBlockByNumberRequest(compositeBlockKey.getBlockNumber(), fetchReceipts))
-              .get();
-
-      FleetBlockContext context =
-          new FleetBlockContext(
-              response.getBlockHeader(),
-              response.getBlockBody(),
-              response.getReceipts(),
-              Optional.of(Bytes.fromHexString(response.getTrieLogRlp())));
-
-      leaderBlock.put(new CompositeBlockKey(response.getBlockHeader()), context);
-      return Optional.of(context);
-    } catch (Exception e) {
-      return Optional.empty();
-    }
+    return getLeaderBlockContext(
+        compositeBlockKey,
+        new GetBlockByNumberRequest(compositeBlockKey.getBlockNumber(), fetchReceipts));
   }
 
   public void provideLeaderBlockContext(final NewHeadParams newHeadParams) {
