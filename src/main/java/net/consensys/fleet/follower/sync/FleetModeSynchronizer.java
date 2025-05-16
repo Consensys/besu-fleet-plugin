@@ -145,11 +145,6 @@ public class FleetModeSynchronizer {
                       if ((leaderHeader.getHead().getNumber()
                               - persistedBlock.getBlockHeader().getNumber())
                           > maxBlocksPerPersist) {
-                        System.out.println(
-                            "start sync for "
-                                + persistedBlock.getBlockHeader().getNumber()
-                                + " "
-                                + maxBlocksPerPersist);
                         targetBlock =
                             getLeaderBlockContextByNumber(
                                     new CompositeBlockKey(
