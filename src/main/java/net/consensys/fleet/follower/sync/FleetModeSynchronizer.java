@@ -115,6 +115,27 @@ public class FleetModeSynchronizer {
     syncDelay = 1;
   }
 
+  /**
+   * Starts the synchronization process between the follower node and the captain chain head.
+   *
+   * <p>The synchronization is divided into two main mechanisms depending on the distance from the
+   * chain head:
+   *
+   * <p>1. Far from head (when captainHead-followerHead > maxBlocksPerPersist): Blocks are fetched
+   * by block number. This approach allows retrieving a range of blocks efficiently without needing
+   * to know their hashes. If we were to fetch by block hash, we would have to walk back from the
+   * head one block at a time to discover the right hashes.
+   *
+   * <p>2. Close to head: Once synchronization is close enough to the head, it switches to fetching
+   * blocks by hash. This is more reliable and ensures we are on the correct fork.
+   *
+   * <p>Fetching by block number is safe because block hash validation is performed once we approach
+   * the head. If the remote peer (captain) is on a different fork, it will be detected during the
+   * hash-based phase, and the older blocks will be updated
+   *
+   * <p>After each range of blocks is retrieved, trielogs are applied in the same manner as in the
+   * Bonsai trie model.
+   */
   private void startSync() {
     if (syncScheduler == null || syncScheduler.isDone() || syncScheduler.isCancelled()) {
       syncScheduler =
