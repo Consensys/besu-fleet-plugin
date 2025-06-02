@@ -15,7 +15,9 @@
 package net.consensys.fleet.follower.sync;
 
 import net.consensys.fleet.common.plugin.PluginServiceProvider;
-import net.consensys.fleet.common.rpc.model.GetBlockRequest;
+import net.consensys.fleet.common.rpc.model.AbstractGetBlockRequest;
+import net.consensys.fleet.common.rpc.model.GetBlockByHashRequest;
+import net.consensys.fleet.common.rpc.model.GetBlockByNumberRequest;
 import net.consensys.fleet.common.rpc.model.GetBlockResponse;
 import net.consensys.fleet.common.rpc.model.NewHeadParams;
 import net.consensys.fleet.follower.rpc.client.FleetGetBlockClient;
@@ -53,8 +55,8 @@ public class BlockContextProvider {
     this.getBlockClient = getBlockClient;
   }
 
-  public Optional<FleetBlockContext> getLeaderBlockContextByNumber(
-      final CompositeBlockKey compositeBlockKey, final boolean fetchReceipts) {
+  private Optional<FleetBlockContext> getLeaderBlockContext(
+      final CompositeBlockKey compositeBlockKey, AbstractGetBlockRequest request) {
     try {
       Optional<FleetBlockContext> cachedContext =
           Optional.ofNullable(leaderBlock.getIfPresent(compositeBlockKey));
@@ -63,10 +65,7 @@ public class BlockContextProvider {
         return cachedContext;
       }
 
-      GetBlockResponse response =
-          getBlockClient
-              .sendData(new GetBlockRequest(compositeBlockKey.getBlockHash(), fetchReceipts))
-              .get();
+      GetBlockResponse response = getBlockClient.sendData(request).get();
 
       FleetBlockContext context =
           new FleetBlockContext(
@@ -80,6 +79,20 @@ public class BlockContextProvider {
     } catch (Exception e) {
       return Optional.empty();
     }
+  }
+
+  public Optional<FleetBlockContext> getLeaderBlockContextByHash(
+      final CompositeBlockKey compositeBlockKey, final boolean fetchReceipts) {
+    return getLeaderBlockContext(
+        compositeBlockKey,
+        new GetBlockByHashRequest(compositeBlockKey.getBlockHash(), fetchReceipts));
+  }
+
+  public Optional<FleetBlockContext> getLeaderBlockContextByNumber(
+      final CompositeBlockKey compositeBlockKey, final boolean fetchReceipts) {
+    return getLeaderBlockContext(
+        compositeBlockKey,
+        new GetBlockByNumberRequest(compositeBlockKey.getBlockNumber(), fetchReceipts));
   }
 
   public void provideLeaderBlockContext(final NewHeadParams newHeadParams) {

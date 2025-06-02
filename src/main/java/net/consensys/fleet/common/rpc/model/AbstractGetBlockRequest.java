@@ -12,26 +12,24 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.fleet.common.rpc.client;
+package net.consensys.fleet.common.rpc.model;
 
-import java.util.concurrent.CompletableFuture;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-public abstract class AbstractStateRpcSender<REQUEST, RESPONSE> {
-  protected static final String ENDPOINT = "/";
+public abstract class AbstractGetBlockRequest {
 
-  protected final WebClientWrapper webClient;
+  @JsonProperty("fetchReceipts")
+  private boolean fetchReceipts;
 
-  public AbstractStateRpcSender(final WebClientWrapper webClient) {
-    this.webClient = webClient;
+  public AbstractGetBlockRequest() {}
+
+  public AbstractGetBlockRequest(final boolean fetchReceipts) {
+    this.fetchReceipts = fetchReceipts;
   }
 
-  public static String getENDPOINT() {
-    return ENDPOINT;
+  public boolean isFetchReceipts() {
+    return fetchReceipts;
   }
 
-  public WebClientWrapper getWebClient() {
-    return webClient;
-  }
-
-  public abstract CompletableFuture<RESPONSE> sendData(REQUEST data);
+  public abstract String getMethodName();
 }

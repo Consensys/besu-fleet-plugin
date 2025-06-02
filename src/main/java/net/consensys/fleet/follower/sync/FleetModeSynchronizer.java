@@ -115,8 +115,29 @@ public class FleetModeSynchronizer {
     syncDelay = 1;
   }
 
+  /**
+   * Starts the synchronization process between the follower node and the captain chain head.
+   *
+   * <p>The synchronization is divided into two main mechanisms depending on the distance from the
+   * chain head:
+   *
+   * <p>1. Far from head (when captainHead-followerHead > maxBlocksPerPersist): Blocks are fetched
+   * by block number. This approach allows retrieving a range of blocks efficiently without needing
+   * to know their hashes. If we were to fetch by block hash, we would have to walk back from the
+   * head one block at a time to discover the right hashes.
+   *
+   * <p>2. Close to head: Once synchronization is close enough to the head, it switches to fetching
+   * blocks by hash. This is more reliable and ensures we are on the correct fork.
+   *
+   * <p>Fetching by block number is safe because block hash validation is performed once we approach
+   * the head. If the remote peer (captain) is on a different fork, it will be detected during the
+   * hash-based phase, and the older blocks will be updated
+   *
+   * <p>After each range of blocks is retrieved, trielogs are applied in the same manner as in the
+   * Bonsai trie model.
+   */
   private void startSync() {
-    if (syncScheduler == null || syncScheduler.isDone()) {
+    if (syncScheduler == null || syncScheduler.isDone() || syncScheduler.isCancelled()) {
       syncScheduler =
           EXECUTOR_SERVICE.schedule(
               () -> {
@@ -142,18 +163,19 @@ public class FleetModeSynchronizer {
                       long persistedBlockNumber = persistedBlock.getBlockHeader().getNumber();
 
                       FleetBlockContext targetBlock;
-                      if ((leaderHeader.getFinalizedBlockNumber()
+                      if ((leaderHeader.getHead().getNumber()
                               - persistedBlock.getBlockHeader().getNumber())
                           > maxBlocksPerPersist) {
                         targetBlock =
-                            getLeaderBlockContext(
+                            getLeaderBlockContextByNumber(
                                     new CompositeBlockKey(
-                                        leaderHeader.getFinalizedBlockNumber(),
-                                        leaderHeader.getFinalizedBlockHash()))
+                                        persistedBlock.getBlockHeader().getNumber()
+                                            + maxBlocksPerPersist))
                                 .orElseThrow(MissingBlockException::new);
                       } else {
                         targetBlock =
-                            getLeaderBlockContext(new CompositeBlockKey(leaderHeader.getHead()))
+                            getLeaderBlockContextByHash(
+                                    new CompositeBlockKey(leaderHeader.getHead()))
                                 .orElseThrow(MissingBlockException::new);
                       }
 
@@ -186,7 +208,7 @@ public class FleetModeSynchronizer {
                           < targetBlock.getBlockHeader().getNumber()) {
                         LOG.debug("Rollforward {}", targetBlockHash);
                         final FleetBlockContext toRollForwardBlock =
-                            getLeaderBlockContext(
+                            getLeaderBlockContextByHash(
                                     new CompositeBlockKey(targetBlock.getBlockHeader()))
                                 .orElseThrow(MissingBlockException::new);
                         rollForward.add(toRollForwardBlock);
@@ -199,7 +221,7 @@ public class FleetModeSynchronizer {
                           targetBlock = persistedBlock;
                         } else {
                           targetBlock =
-                              getLeaderBlockContext(
+                              getLeaderBlockContextByHash(
                                       new CompositeBlockKey(
                                           targetBlock.getBlockHeader().getNumber() - 1,
                                           targetBlock.getBlockHeader().getParentHash()))
@@ -219,11 +241,11 @@ public class FleetModeSynchronizer {
                         LOG.debug("Paired rollforward {}", targetBlockHash);
 
                         rollForward.add(
-                            getLeaderBlockContext(
+                            getLeaderBlockContextByHash(
                                     new CompositeBlockKey(targetBlock.getBlockHeader()))
                                 .orElseThrow(MissingBlockException::new));
                         targetBlock =
-                            getLeaderBlockContext(
+                            getLeaderBlockContextByHash(
                                     new CompositeBlockKey(
                                         targetBlock.getBlockHeader().getNumber() - 1,
                                         targetBlock.getBlockHeader().getParentHash()))
@@ -390,7 +412,15 @@ public class FleetModeSynchronizer {
     return pluginServiceProvider.isServiceAvailable(BlockchainService.class);
   }
 
-  private Optional<FleetBlockContext> getLeaderBlockContext(
+  private Optional<FleetBlockContext> getLeaderBlockContextByHash(
+      final CompositeBlockKey compositeBlockKey) {
+    return blockContextProvider.getLeaderBlockContextByHash(
+        compositeBlockKey,
+        (leaderHeader.getHead().getNumber() - compositeBlockKey.getBlockNumber())
+            <= headDistanceForReceiptFetch);
+  }
+
+  private Optional<FleetBlockContext> getLeaderBlockContextByNumber(
       final CompositeBlockKey compositeBlockKey) {
     return blockContextProvider.getLeaderBlockContextByNumber(
         compositeBlockKey,

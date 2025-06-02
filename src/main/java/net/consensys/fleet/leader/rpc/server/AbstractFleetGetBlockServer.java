@@ -16,21 +16,13 @@ package net.consensys.fleet.leader.rpc.server;
 
 import net.consensys.fleet.common.plugin.PluginServiceProvider;
 import net.consensys.fleet.common.rpc.json.ConvertMapperProvider;
-import net.consensys.fleet.common.rpc.model.GetBlockRequest;
 import net.consensys.fleet.common.rpc.model.GetBlockResponse;
 import net.consensys.fleet.common.rpc.server.PluginRpcMethod;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.plugin.data.BlockContext;
-import org.hyperledger.besu.plugin.data.BlockHeader;
-import org.hyperledger.besu.plugin.data.TransactionReceipt;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TrieLogService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
@@ -38,24 +30,19 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLogProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FleetGetBlockServer implements PluginRpcMethod {
+public abstract class AbstractFleetGetBlockServer implements PluginRpcMethod {
 
-  private static final Logger LOG = LoggerFactory.getLogger(FleetGetBlockServer.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractFleetGetBlockServer.class);
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final ConvertMapperProvider convertMapperProvider;
   private final PluginServiceProvider pluginServiceProvider;
 
-  public FleetGetBlockServer(
+  public AbstractFleetGetBlockServer(
       final ConvertMapperProvider convertMapperProvider,
       final PluginServiceProvider pluginServiceProvider) {
     this.convertMapperProvider = convertMapperProvider;
     this.pluginServiceProvider = pluginServiceProvider;
-  }
-
-  @Override
-  public String getName() {
-    return "getBlock";
   }
 
   @Override
@@ -67,35 +54,12 @@ public class FleetGetBlockServer implements PluginRpcMethod {
       final TrieLogProvider trieLogProvider =
           pluginServiceProvider.getService(TrieLogService.class).getTrieLogProvider();
       try {
-        final GetBlockRequest getBlockRequest =
-            OBJECT_MAPPER.readValue(rpcRequest.getParams()[0].toString(), GetBlockRequest.class);
-        final Hash blockHash = getBlockRequest.getBlockHash();
-        final Optional<BlockContext> blockByNumber = blockchainService.getBlockByHash(blockHash);
-        if (blockByNumber.isPresent()) {
-          final BlockHeader blockHeader = blockByNumber.get().getBlockHeader();
-          final List<TransactionReceipt> receipts;
-          if (getBlockRequest.isFetchReceipts()) {
-            receipts =
-                blockchainService
-                    .getReceiptsByBlockHash(blockHeader.getBlockHash())
-                    .orElse(Collections.emptyList());
-          } else {
-            receipts = Collections.emptyList();
-          }
-          return convertMapperProvider
-              .getJsonConverter()
-              .valueToTree(
-                  new GetBlockResponse(
-                      blockHeader,
-                      blockByNumber.get().getBlockBody(),
-                      receipts,
-                      trieLogProvider
-                          .getRawTrieLogLayer(blockHeader.getBlockHash())
-                          .map(Bytes::toHexString)
-                          .orElseThrow()));
+        final Optional<GetBlockResponse> maybeBlock =
+            getBlock(rpcRequest, blockchainService, trieLogProvider);
+        if (maybeBlock.isPresent()) {
+          return convertMapperProvider.getJsonConverter().valueToTree(maybeBlock.get());
         }
-
-      } catch (JsonProcessingException e) {
+      } catch (Exception e) {
         LOG.trace(
             "Ignore invalid request for method {} with {}", getName(), rpcRequest.getParams());
       }
@@ -107,4 +71,10 @@ public class FleetGetBlockServer implements PluginRpcMethod {
   private boolean isBlockchainServiceReady() {
     return pluginServiceProvider.isServiceAvailable(BlockchainService.class);
   }
+
+  protected abstract Optional<GetBlockResponse> getBlock(
+      final PluginRpcRequest rpcRequest,
+      final BlockchainService blockchainService,
+      final TrieLogProvider trieLogProvider)
+      throws JsonProcessingException;
 }

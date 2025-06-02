@@ -16,32 +16,27 @@ package net.consensys.fleet.follower.rpc.client;
 
 import net.consensys.fleet.common.rpc.client.AbstractStateRpcSender;
 import net.consensys.fleet.common.rpc.client.WebClientWrapper;
-import net.consensys.fleet.common.rpc.model.GetBlockRequest;
+import net.consensys.fleet.common.rpc.model.AbstractGetBlockRequest;
 import net.consensys.fleet.common.rpc.model.GetBlockResponse;
 
 import java.util.concurrent.CompletableFuture;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 
-public class FleetGetBlockClient extends AbstractStateRpcSender<GetBlockRequest, GetBlockResponse> {
-
-  private static final String METHOD_NAME = "fleet_getBlock";
+public class FleetGetBlockClient
+    extends AbstractStateRpcSender<AbstractGetBlockRequest, GetBlockResponse> {
 
   public FleetGetBlockClient(final WebClientWrapper webClient) {
     super(webClient);
   }
 
   @Override
-  protected String getMethodeName() {
-    return METHOD_NAME;
-  }
-
-  @Override
-  public CompletableFuture<GetBlockResponse> sendData(final GetBlockRequest blockNumber) {
+  public CompletableFuture<GetBlockResponse> sendData(
+      final AbstractGetBlockRequest getBlockRequest) {
     final CompletableFuture<GetBlockResponse> completableFuture = new CompletableFuture<>();
     try {
       webClient
-          .sendToLeader(ENDPOINT, getMethodeName(), blockNumber)
+          .sendToLeader(ENDPOINT, getBlockRequest.getMethodName(), getBlockRequest)
           .whenCompleteAsync(
               (result, throwable) -> {
                 if (throwable == null) {
