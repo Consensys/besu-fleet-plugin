@@ -39,11 +39,15 @@ public class WebClientWrapper {
   private final WebClient webClient;
   private final ConvertMapperProvider convertMapperProvider;
   private final PeerNodesManager peerManagers;
+  private final long timeout;
 
   public WebClientWrapper(
-      final ConvertMapperProvider convertMapperProvider, final PeerNodesManager peerManagers) {
+      final ConvertMapperProvider convertMapperProvider,
+      final PeerNodesManager peerManagers,
+      final long timeout) {
     this.peerManagers = peerManagers;
     this.convertMapperProvider = convertMapperProvider;
+    this.timeout = timeout;
     this.webClient = WebClient.create(Vertx.vertx(), new WebClientOptions());
   }
 
@@ -64,7 +68,7 @@ public class WebClientWrapper {
 
     webClient
         .post(leader.port(), leader.host(), endpoint)
-        .timeout(100)
+        .timeout(timeout)
         .putHeader("Content-Type", CONTENT_TYPE)
         .sendJsonObject(
             jsonObject,
@@ -99,7 +103,7 @@ public class WebClientWrapper {
             peerNode -> {
               webClient
                   .post(peerNode.port(), peerNode.host(), endpoint)
-                  .timeout(100)
+                  .timeout(timeout)
                   .putHeader("Content-Type", CONTENT_TYPE)
                   .sendJsonObject(
                       jsonObject,
