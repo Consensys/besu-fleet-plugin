@@ -185,9 +185,9 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core'
 
 
-    implementation 'org.hyperledger.besu.internal:pipeline'
-    implementation 'org.hyperledger.besu.internal:rlp'
-    implementation 'org.hyperledger.besu:plugin-api'
+    implementation 'org.hyperledger.besu.internal:besu-services-pipeline'
+    implementation 'org.hyperledger.besu.internal:besu-ethereum-rlp'
+    implementation 'org.hyperledger.besu:besu-plugin-api'
     implementation 'org.hyperledger.besu:besu-datatypes'
     implementation 'info.picocli:picocli'
 

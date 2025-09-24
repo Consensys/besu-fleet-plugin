@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.google.auto.service.AutoService;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
+import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
@@ -90,9 +91,22 @@ public class FleetPlugin implements BesuPlugin {
     }
     cmdlineOptions.get().addPicoCLIOptions(NAME, CLI_OPTIONS);
 
+    LOG.debug("Loading BesuConfiguration service");
+    final BesuConfiguration besuConfigurationService =
+        serviceManager
+            .getService(BesuConfiguration.class)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Expecting a BesuConfiguration service, but none found."));
+
     LOG.info("Creating peer manager");
-    peerManagers = new PeerNodesManager();
-    this.webClient = new WebClientWrapper(convertMapperProvider, peerManagers);
+    this.peerManagers = new PeerNodesManager();
+    this.webClient =
+        new WebClientWrapper(
+            convertMapperProvider,
+            peerManagers,
+            besuConfigurationService.getConfiguredRpcHttpTimeoutSec());
 
     LOG.info("Setting up RPC endpoints");
     final List<PluginRpcMethod> pluginRpcMethods = createServerMethods();
@@ -179,6 +193,7 @@ public class FleetPlugin implements BesuPlugin {
   private void createPeerNetworkMaintainer() {
     LOG.info("Setting up connection parameters");
     final PeerNetworkMaintainer peerNetworkMaintainer;
+
     switch (CLI_OPTIONS.getNodeRole()) {
       case LEADER -> {
         /* ********** LEADER ************* */

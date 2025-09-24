@@ -20,6 +20,7 @@ import net.consensys.fleet.common.rpc.model.PeerNode;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vertx.core.Vertx;
@@ -39,11 +40,15 @@ public class WebClientWrapper {
   private final WebClient webClient;
   private final ConvertMapperProvider convertMapperProvider;
   private final PeerNodesManager peerManagers;
+  private final long timeoutInMillisecond;
 
   public WebClientWrapper(
-      final ConvertMapperProvider convertMapperProvider, final PeerNodesManager peerManagers) {
+      final ConvertMapperProvider convertMapperProvider,
+      final PeerNodesManager peerManagers,
+      final long timeoutInMillisecond) {
     this.peerManagers = peerManagers;
     this.convertMapperProvider = convertMapperProvider;
+    this.timeoutInMillisecond = TimeUnit.SECONDS.toMillis(timeoutInMillisecond);
     this.webClient = WebClient.create(Vertx.vertx(), new WebClientOptions());
   }
 
@@ -64,7 +69,7 @@ public class WebClientWrapper {
 
     webClient
         .post(leader.port(), leader.host(), endpoint)
-        .timeout(100)
+        .timeout(timeoutInMillisecond)
         .putHeader("Content-Type", CONTENT_TYPE)
         .sendJsonObject(
             jsonObject,
@@ -99,7 +104,7 @@ public class WebClientWrapper {
             peerNode -> {
               webClient
                   .post(peerNode.port(), peerNode.host(), endpoint)
-                  .timeout(100)
+                  .timeout(timeoutInMillisecond)
                   .putHeader("Content-Type", CONTENT_TYPE)
                   .sendJsonObject(
                       jsonObject,
