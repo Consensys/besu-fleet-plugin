@@ -37,6 +37,8 @@ jobs:
           echo "## Release ${{ github.ref_name }}" > output.md
           echo "./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar" >> output.md
           echo "SHA256: $(sha256sum ./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar | awk '{ print $1 }' )" >> output.md
+          echo "./build/distributions/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.zip" >> output.md
+          echo "SHA256: $(sha256sum ./build/distributions/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.zip | awk '{ print $1 }' )" >> output.md
           echo "" >> output.md
 
       - name: Upload Release Asset
@@ -49,7 +51,9 @@ jobs:
           body_path: output.md
           generate_release_notes: true
           fail_on_unmatched_files: true          
-          files: ./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar
+          files: |
+            ./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar
+            ./build/distributions/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.zip
 
       - name: Publish to artifactory
         if: "!startsWith(github.ref, 'refs/tags/')"
