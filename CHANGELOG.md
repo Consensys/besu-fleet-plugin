@@ -2,6 +2,7 @@
 
 ## Unreleased
 - Fixed a bug that prevented the node from syncing with an old snapshot [#46](https://github.com/Consensys/besu-fleet-plugin/pull/46)
+  
 ## 0.3.8
 - `--plugin-fleet-follower-http-host` and `--plugin-fleet-follower-http-port` options are deprecated and will be removed in a future release.
 - use BesuConfiguration service to get RPC host and port values as configured in Besu
