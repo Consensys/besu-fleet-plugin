@@ -14,14 +14,10 @@
  */
 
 dependencyManagement {
+    imports {
+        mavenBom "org.hyperledger.besu:bom:${besuVersion}"
+    }
     dependencies {
-        // jackson
-        dependencySet(group: 'com.fasterxml.jackson.core', version : '2.17.1') {
-            entry 'jackson-annotations'
-            entry 'jackson-core'
-            entry 'jackson-databind'
-        }
-
         // Error prone dependencies
         dependencySet(group: 'com.google.errorprone', version: '2.28.0') {
             entry 'error_prone_annotation'
@@ -30,36 +26,6 @@ dependencyManagement {
             entry 'error_prone_test_helpers'
         }
         dependency 'tech.pegasys.tools.epchecks:errorprone-checks:1.1.1'
-
-        // Besu dependencies
-        dependency "org.hyperledger.besu:besu-plugin-api:${besuVersion}"
-        dependency "org.hyperledger.besu:besu-datatypes:${besuVersion}"
-        dependency "org.hyperledger.besu.internal:besu-services-pipeline:${besuVersion}"
-        dependency "org.hyperledger.besu.internal:besu-ethereum-rlp:${besuVersion}"
-
-
-        // Logging dependencies
-        dependencySet(group: 'org.apache.logging.log4j', version: '2.22.1') {
-            entry 'log4j-api'
-            entry 'log4j-core'
-            entry 'log4j-slf4j2-impl'
-        }
-        dependency 'org.slf4j:slf4j-api:2.0.13'
-
-        // auto service
-        dependencySet(group: 'com.google.auto.service', version: '1.1.1') {
-            entry 'auto-service-annotations'
-            entry 'auto-service'
-        }
-
-        // vertx - match Besu's version
-        dependencySet(group: 'io.vertx', version: '4.5.8') {
-            entry 'vertx-core'
-            entry 'vertx-junit5'
-            entry 'vertx-unit'
-            entry 'vertx-web'
-            entry 'vertx-web-client'
-        }
 
         // junit
         dependencySet(group: 'org.junit.jupiter', version: '5.10.2') {
@@ -75,15 +41,6 @@ dependencyManagement {
             entry 'mockito-junit-jupiter'
         }
 
-        dependencySet(group: 'info.picocli', version: '4.7.6') {
-            entry 'picocli'
-            entry 'picocli-codegen'
-        }
-
         dependency 'org.assertj:assertj-core:3.26.0'
-
-        dependency 'com.google.guava:guava:33.2.1-jre'
-
-
     }
 }
