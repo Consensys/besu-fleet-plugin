@@ -122,7 +122,7 @@ jobs:
         uses: ConsenSys/github-actions/java-get-project-version@main
 
       - name: Publish to artifactory
-        if: "!startsWith(github.ref, 'refs/tags/')"
+        if: github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')
         uses: ./.github/actions/publish-to-artifactory
         with:
           publish-version: ${{ steps.project_version.outputs.specific-version }}

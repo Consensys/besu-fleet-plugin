@@ -52,7 +52,6 @@ jobs:
           files: ./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar
 
       - name: Publish to artifactory
-        if: "!startsWith(github.ref, 'refs/tags/')"
         uses: ./.github/actions/publish-to-artifactory
         with:
           publish-version: ${{ steps.get_version.outputs.VERSION }}
