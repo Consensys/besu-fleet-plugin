@@ -7,11 +7,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: publish
     permissions:
       contents: write
       id-token: write
+    env:
+      GRADLE_OPTS: -Xmx2g -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,8 +53,16 @@ jobs:
           fail_on_unmatched_files: true          
           files: ./build/libs/besu-fleet-plugin-${{ steps.get_version.outputs.VERSION }}.jar
 
-      - name: Publish to artifactory
+      - name: Publish to maven central
         if: "!startsWith(github.ref, 'refs/tags/')"
-        uses: ./.github/actions/publish-to-artifactory
-        with:
-          publish-version: ${{ steps.get_version.outputs.VERSION }}
+        env:
+          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JRELEASER_GITHUB_USERNAME: ${{ github.actor }}
+          JRELEASER_GITHUB_EMAIL: ${{ github.actor }}@users.noreply.github.com
+          JRELEASER_GPG_PASSPHRASE : ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+          JRELEASER_GPG_SECRET_KEY : ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
+          JRELEASER_GPG_PUBLIC_KEY : ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
+          JRELEASER_MAVENCENTRAL_USERNAME : ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
+          JRELEASER_MAVENCENTRAL_PASSWORD : ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
+        run: ./gradlew publish jreleaserFullRelease -PreleaseVersion=${{ steps.get_version.outputs.VERSION }}
+

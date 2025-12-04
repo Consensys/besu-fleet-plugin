@@ -37,12 +37,22 @@ plugins {
     id 'com.github.jk1.dependency-license-report' version '2.8'
     id 'net.ltgt.errorprone' version '4.0.1' apply false
     id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'org.jreleaser' version '1.16.0'    
     id 'java'
     id 'java-library'
-    id 'com.jfrog.artifactory' version '5.2.5'
     id 'maven-publish'
+    id 'signing'
 }
 
+tasks.register("sourcesJar", Jar) {
+    archiveClassifier = "sources"
+    from sourceSets.main.allSource
+}
+
+tasks.register("javadocJar", Jar) {
+    archiveClassifier = "javadoc"
+    from tasks.javadoc
+}
 
 apply plugin: 'java-library'
 apply plugin: 'io.spring.dependency-management'
@@ -50,11 +60,6 @@ apply plugin: 'net.ltgt.errorprone'
 apply plugin: 'jacoco'
 apply from: "${rootDir}/gradle/versions.gradle"
 apply from: "${rootDir}/gradle/check-licenses.gradle"
-
-def artifactoryUser = project.hasProperty('artifactoryUser') ? project.property('artifactoryUser') : System.getenv('ARTIFACTORY_USER')
-def artifactoryPassword  = project.hasProperty('artifactoryPassword') ? project.property('artifactoryPassword') : System.getenv('ARTIFACTORY_PASSWORD')
-def artifactoryRepo = System.getenv('ARTIFACTORY_REPO') ? System.getenv('ARTIFACTORY_REPO') : 'maven-local'
-def artifactoryOrg = System.getenv('ARTIFACTORY_ORG') ? System.getenv('ARTIFACTORY_ORG') : 'consensys'
 
 group = 'net.consensys.fleet.besu.plugin'
 //version = '0.1.0'
@@ -79,9 +84,6 @@ repositories {
     maven {
         url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
         content { includeGroupByRegex('org\\.hyperledger\\.besu($|\\..*)') }
-    }
-    maven {
-        url "https://${artifactoryOrg}.jfrog.io/artifactory/${artifactoryRepo}/"
     }
 }
 
@@ -230,6 +232,7 @@ test {
     useJUnitPlatform()
 }
 
+
 task plugin(dependsOn: 'jar') {
     group 'build'
     description 'Alias for the jar task'
@@ -279,38 +282,131 @@ def getCheckedOutGitCommitHash(length = 8) {
     }
 }
 
-artifactory {
-    publish {
-        contextUrl = "https://${artifactoryOrg}.jfrog.io/artifactory"
-        repository {
-            repoKey = "${artifactoryRepo}"
-            username = "${artifactoryUser}"
-            password = "${artifactoryPassword}"
-        }
-
-        defaults {
-            publications('mavenJava')
-            publishArtifacts = true
-            publishPom = true
-        }
-    }
-}
-
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
 
+            // sources and javadoc
+            artifact tasks.named("sourcesJar")
+            artifact tasks.named("javadocJar")
 
-            // Following configuration needed as without this artifactoryPublish fails due to dependency versions not available
+            // metadata
+            artifactId = project.name
+            groupId = project.group
+            version = project.version
+
             versionMapping {
-                usage('java-api') {
-                    fromResolutionOf('runtimeClasspath')
-                }
-                usage('java-runtime') {
+                allVariants {
                     fromResolutionResult()
+                }
+            }
+
+            pom {
+                name.set("Besu Fleet Plugin")
+                description.set("Plugin for Besu fleet operations")
+                url.set("https://github.com/Consensys/besu-fleet-plugin")
+                licenses {
+                    license {
+                        name.set("Apache-2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0")
+                    }
+                }
+                scm {
+                    connection.set("scm:git:https://github.com/Consensys/besu-fleet-plugin.git")
+                    developerConnection.set("scm:git:ssh://git@github.com:Consensys/besu-fleet-plugin.git")
+                    url.set("https://github.com/Consensys/besu-fleet-plugin")
+                }
+                developers {
+                    developer {
+                        id.set("consensys")
+                        name.set("Protocols Team")
+                        email.set("devops@consensys.net")
+                    }
                 }
             }
         }
     }
+
+    // Local publish dir for JReleaser to stage from
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir("staging-deploy")
+        }
+    }
+}
+
+// signing {
+//     useInMemoryPgpKeys(
+//         System.getenv('JRELEASER_GPG_SECRET_KEY'),
+//         System.getenv('JRELEASER_GPG_PASSPHRASE')
+//     )
+//     sign publishing.publications.mavenJava
+// }
+
+jreleaser {
+    project {
+        description = "Besu Fleet Plugin"
+        copyright = 'Copyright 2025 ConsenSys'
+        authors = ["Consensys"]
+        license = "Apache-2.0"
+        java {
+            groupId = group
+        }
+    }
+
+    release {
+        github {
+            skipTag = true
+            skipRelease = true
+            token = "noop" // required placeholder
+        }
+    }
+
+    signing {
+        active = 'ALWAYS'
+        armored = true
+    }
+
+    deploy {
+        maven {
+            mavenCentral {
+                sonatype {
+                    active = 'RELEASE'
+                    url = 'https://central.sonatype.com/api/v1/publisher'
+                    stagingRepository('build/staging-deploy')
+                    retryDelay = 60
+                    maxRetries = 100
+                }
+            }
+
+            //  snapshot deploy
+            nexus2 {
+                snapshot {
+                    active = 'SNAPSHOT'
+                    url = 'https://central.sonatype.com/repository/maven-snapshots'
+                    snapshotUrl = 'https://central.sonatype.com/repository/maven-snapshots'
+                    stagingRepository('build/staging-deploy')
+                    applyMavenCentralRules = true
+                    snapshotSupported = true
+                    closeRepository = true
+                    releaseRepository = true
+                }
+            }
+        }
+    }
+}
+
+// Create a task to prepare the jreleaser directory.
+task prepareJreleaserDirectory {
+  doLast {
+    file(rootProject.layout.buildDirectory.dir("jreleaser")).mkdirs()
+  }
+}
+
+// Make every task whose name starts with "jreleaser" depend on the preparation task.
+tasks.all { t ->
+  if (t.name.startsWith("jreleaser")) {
+    t.dependsOn prepareJreleaserDirectory
+  }
 }
