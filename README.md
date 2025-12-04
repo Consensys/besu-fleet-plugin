@@ -81,3 +81,5 @@ Here are the steps for releasing a new version of the plugin:
 2. GitHub Actions will automatically create the release artifacts and update the release notes
 
 **Note**: Release tags (of the form v*) are protected and can only be pushed by organization and/or repository owners. 
+
+
