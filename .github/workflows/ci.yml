@@ -8,7 +8,7 @@ on:
 
 jobs:
   assemble:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: dev
     env:
       ARTIFACTORY_REPO: besu-maven
@@ -52,7 +52,7 @@ jobs:
 
   unitTests:
     needs: assemble
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
     steps:
@@ -90,17 +90,21 @@ jobs:
           name: jar
           path: 'build/libs/'
 
-  publishToArtifactory:
+  publishToMavenCentral:
     needs: 
       - assemble
       - unitTests
-    runs-on: ubuntu-latest
-    env:
-      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
+    runs-on: ubuntu-24.04
+    # env:
+    #   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
+    #   JAVA_TOOL_OPTIONS: "-Xmx10g"      
+    #   JRELEASER_OPTS: "-Xmx4g"
+    #   JRELEASER_JAVA_OPTS: "-Xmx4g"
     environment: publish
     permissions:
       contents: write
       id-token: write
+      packages: write    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -120,8 +124,15 @@ jobs:
         id: project_version
         uses: ConsenSys/github-actions/java-get-project-version@main
 
-      - name: Publish to artifactory
+      - name: Publish to maven central
         if: "!startsWith(github.ref, 'refs/tags/')"
-        uses: ./.github/actions/publish-to-artifactory
-        with:
-          publish-version: ${{ steps.project_version.outputs.specific-version }}
+        env:
+          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JRELEASER_GITHUB_USERNAME: ${{ github.actor }}
+          JRELEASER_GITHUB_EMAIL: ${{ github.actor }}@users.noreply.github.com
+          JRELEASER_GPG_PASSPHRASE : ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+          JRELEASER_GPG_SECRET_KEY : ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
+          JRELEASER_GPG_PUBLIC_KEY : ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
+          JRELEASER_MAVENCENTRAL_USERNAME : ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
+          JRELEASER_MAVENCENTRAL_PASSWORD : ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
+        run:  ./gradlew clean build assemble publish jreleaserFullRelease -PreleaseVersion=${{ steps.project_version.outputs.specific-version }} 

@@ -18,7 +18,7 @@ on:
 
 jobs:
   fleet:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
 
@@ -54,7 +54,7 @@ jobs:
           retention-days: 5
           
   besu:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
 
@@ -92,7 +92,7 @@ jobs:
     needs: 
       - fleet
       - besu
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: dev
 
     steps:
