@@ -368,6 +368,11 @@ jreleaser {
         armored = true
     }
 
+    assemble {
+        active = "never"
+    }
+
+
     deploy {
         maven {
             mavenCentral {
