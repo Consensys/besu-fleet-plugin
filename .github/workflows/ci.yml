@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - publish-to-maven-central
   pull_request:
 
 jobs:
@@ -94,12 +95,10 @@ jobs:
     needs: 
       - assemble
       - unitTests
-    runs-on: ubuntu-24.04
-    # env:
-    #   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
-    #   JAVA_TOOL_OPTIONS: "-Xmx10g"      
-    #   JRELEASER_OPTS: "-Xmx4g"
-    #   JRELEASER_JAVA_OPTS: "-Xmx4g"
+    runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: -Xmx10g 
+      JRELEASER_JAVA_OPTS: "-Xmx8g"
     environment: publish
     permissions:
       contents: write
@@ -135,4 +134,4 @@ jobs:
           JRELEASER_GPG_PUBLIC_KEY : ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
           JRELEASER_MAVENCENTRAL_USERNAME : ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
           JRELEASER_MAVENCENTRAL_PASSWORD : ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
-        run:  ./gradlew clean build assemble publish jreleaserFullRelease -PreleaseVersion=${{ steps.project_version.outputs.specific-version }} 
+        run:  ./gradlew clean build assemble publish jreleaserFullRelease -PreleaseVersion=${{ steps.project_version.outputs.specific-version }} --no-daemon --no-watch-fs
