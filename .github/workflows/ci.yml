@@ -95,10 +95,7 @@ jobs:
     needs: 
       - assemble
       - unitTests
-    runs-on: ubuntu-latest-128
-    env:
-      GRADLE_OPTS: -Xmx10g 
-      JRELEASER_JAVA_OPTS: "-Xmx8g"
+    runs-on: ubuntu-24.04
     environment: publish
     permissions:
       contents: write
@@ -126,6 +123,9 @@ jobs:
       - name: Publish to maven central
         if: "!startsWith(github.ref, 'refs/tags/')"
         env:
+          GRADLE_OPTS: "-Xmx4g -Xms512m"
+          JAVA_OPTS: "-Xmx4g"
+          JRELEASER_OPTS: "-Xmx4g"
           JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           JRELEASER_GITHUB_USERNAME: ${{ github.actor }}
           JRELEASER_GITHUB_EMAIL: ${{ github.actor }}@users.noreply.github.com
@@ -134,4 +134,6 @@ jobs:
           JRELEASER_GPG_PUBLIC_KEY : ${{ secrets.JRELEASER_GPG_PUBLIC_KEY }}
           JRELEASER_MAVENCENTRAL_USERNAME : ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
           JRELEASER_MAVENCENTRAL_PASSWORD : ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
-        run:  ./gradlew clean build assemble publish jreleaserFullRelease -PreleaseVersion=${{ steps.project_version.outputs.specific-version }} --no-daemon --no-watch-fs
+          JRELEASER_NEXUS2_USERNAME : ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
+          JRELEASER_NEXUS2_PASSWORD : ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}    
+        run: ./gradlew clean build assemble publish jreleaserFullRelease -PreleaseVersion=${{ steps.project_version.outputs.specific-version }} --no-daemon --stacktrace --info
