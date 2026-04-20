@@ -37,14 +37,13 @@ plugins {
     id 'com.github.jk1.dependency-license-report' version '2.8'
     id 'net.ltgt.errorprone' version '4.0.1' apply false
     id 'com.github.johnrengelman.shadow' version '8.1.1'
-    id 'java'
-    id 'java-library'
     id 'com.jfrog.artifactory' version '5.2.5'
     id 'maven-publish'
+    id 'net.consensys.besu-plugin-distribution' version '0.1.4'
 }
 
 
-apply plugin: 'java-library'
+apply plugin: 'net.consensys.besu-plugin-distribution'
 apply plugin: 'io.spring.dependency-management'
 apply plugin: 'net.ltgt.errorprone'
 apply plugin: 'jacoco'
@@ -60,8 +59,10 @@ group = 'net.consensys.fleet.besu.plugin'
 //version = '0.1.0'
 version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
 
-sourceCompatibility = JavaVersion.VERSION_21
-targetCompatibility = JavaVersion.VERSION_21
+java {
+    sourceCompatibility = 21
+    targetCompatibility = 21
+}
 
 defaultTasks 'build', 'checkLicenses', 'javadoc', 'plugin'
 
@@ -69,16 +70,8 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
-        url "https://artifacts.consensys.net/public/maven/maven/"
-        content { includeGroupByRegex('tech\\.pegasys($|\\..*)') }
-    }
-    maven {
         url "https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/"
         content { includeGroupByRegex('io\\.libp2p($|\\..*)') }
-    }
-    maven {
-        url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
-        content { includeGroupByRegex('org\\.hyperledger\\.besu($|\\..*)') }
     }
     maven {
         url "https://${artifactoryOrg}.jfrog.io/artifactory/${artifactoryRepo}/"
@@ -207,8 +200,6 @@ dependencies {
     testImplementation 'io.vertx:vertx-junit5'
 }
 
-apply plugin: 'java'
-
 jar {
     archiveBaseName = 'besu-fleet-plugin'
 
@@ -220,19 +211,15 @@ jar {
                 'Implementation-Version': calculateVersion()
         )
     }
-
-    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
-    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-    duplicatesStrategy(DuplicatesStrategy.INCLUDE)
 }
 
 test {
     useJUnitPlatform()
 }
 
-task plugin(dependsOn: 'jar') {
+task plugin(dependsOn: 'distZip') {
     group 'build'
-    description 'Alias for the jar task'
+    description 'Alias for the distZip task'
 }
 
 task printVersion() {
@@ -294,6 +281,11 @@ artifactory {
             publishPom = true
         }
     }
+}
+
+tasks.withType(GenerateModuleMetadata).configureEach {
+    // We want to enforce the dependency on Besu BOM
+    suppressedValidationErrors.add('enforced-platform')
 }
 
 publishing {
