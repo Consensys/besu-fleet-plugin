@@ -133,6 +133,8 @@ public class FleetPlugin implements BesuPlugin {
   @Override
   public void start() {
 
+    LOG.info("Starting Fleet plugin with config: {}", CLI_OPTIONS);
+
     LOG.info("Loading RLP converter service");
     final RlpConverterService rlpConverterService =
         serviceManager
